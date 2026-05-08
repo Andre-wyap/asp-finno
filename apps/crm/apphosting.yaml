@@ -1,0 +1,17 @@
+runConfig:
+  minInstances: 0
+env:
+  - variable: RESEND_API_KEY
+    secret: RESEND_API_KEY
+  - variable: RESEND_FROM_ADDRESS
+    secret: RESEND_FROM_ADDRESS
+  - variable: TRACKER_BASE_URL
+    secret: TRACKER_BASE_URL
+  - variable: FIREBASE_PROJECT_ID
+    value: asp-finno
+  - variable: NEXT_PUBLIC_FIREBASE_API_KEY
+    value: AIzaSyBdUfkZwrC5dbjZCgTgMurpHwFCSK6286E
+  - variable: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+    value: asp-finno.firebaseapp.com
+  - variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
+    value: asp-finno

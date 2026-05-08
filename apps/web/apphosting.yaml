@@ -1,0 +1,19 @@
+runConfig:
+  minInstances: 0
+env:
+  - variable: RESEND_API_KEY
+    secret: RESEND_API_KEY
+  - variable: RESEND_WEBHOOK_SECRET
+    secret: RESEND_WEBHOOK_SECRET
+  - variable: RESEND_FROM_ADDRESS
+    secret: RESEND_FROM_ADDRESS
+  - variable: SENANGPAY_MERCHANT_ID
+    secret: SENANGPAY_MERCHANT_ID
+  - variable: SENANGPAY_SECRET
+    secret: SENANGPAY_SECRET
+  - variable: NRIC_HASH_PEPPER
+    secret: NRIC_HASH_PEPPER
+  - variable: TRACKER_BASE_URL
+    secret: TRACKER_BASE_URL
+  - variable: FIREBASE_PROJECT_ID
+    value: asp-finno
