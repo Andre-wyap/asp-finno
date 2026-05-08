@@ -10,7 +10,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@asp/shared": "*",
+    "@asp/shared": "file:../../packages/shared",
     "firebase": "^11.10.0",
     "firebase-admin": "^13.8.0",
     "lucide-react": "^1.14.0",

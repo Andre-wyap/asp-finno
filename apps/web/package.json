@@ -10,8 +10,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@asp/pricing": "*",
-    "@asp/shared": "*",
+    "@asp/pricing": "file:../../packages/pricing",
+    "@asp/shared": "file:../../packages/shared",
     "firebase-admin": "^13.8.0",
     "lucide-react": "^1.14.0",
     "next": "^15.3.0",
