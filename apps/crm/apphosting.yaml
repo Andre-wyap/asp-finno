@@ -15,3 +15,5 @@ env:
     value: asp-finno.firebaseapp.com
   - variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
     value: asp-finno
+  - variable: NEXT_PUBLIC_FIREBASE_APP_ID
+    value: 1:626165683486:web:db393188205ff9548a250f
