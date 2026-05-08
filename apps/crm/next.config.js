@@ -1,7 +1,9 @@
+const path = require('path');
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: 'standalone',
-  outputFileTracingRoot: __dirname,
+  outputFileTracingRoot: path.join(__dirname, '../../'),
   transpilePackages: ['@asp/shared']
 };
 
