@@ -31,7 +31,7 @@ export default function PrivacyPolicyPage() {
           </p>
 
           <Section heading="1. Introduction">
-            WF Wealth Management (SSM No. 202101017850) ("we", "us", or "our"), operating the platform at asp.finnomalaysia.com, is committed to protecting your personal data in accordance with Malaysia's Personal Data Protection Act 2010 (PDPA). This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our platform.
+            {`WF Wealth Management (SSM No. 202101017850) ("we", "us", or "our"), operating the platform at asp.finnomalaysia.com, is committed to protecting your personal data in accordance with Malaysia's Personal Data Protection Act 2010 (PDPA). This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our platform.`}
           </Section>
 
           <Section heading="2. Data We Collect">

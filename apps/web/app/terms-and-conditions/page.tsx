@@ -49,7 +49,7 @@ export default function TermsPage() {
 
           <Section heading="4. Policy Issuance and Relationship with Allianz">
             <p className="mb-3"><strong>4.1</strong> Upon successful payment, WF Wealth Management will process and issue your Allianz Shield Plus policy within the next business day.</p>
-            <p className="mb-3"><strong>4.2</strong> Once your policy is issued, you will have a direct contractual relationship with Allianz General Insurance Company (Malaysia) Berhad. Policy management, policy documents, claims settlements, and coverage obligations are governed by Allianz's terms and are the responsibility of Allianz.</p>
+            <p className="mb-3"><strong>4.2</strong> Once your policy is issued, you will have a direct contractual relationship with Allianz General Insurance Company (Malaysia) Berhad. Policy management, policy documents, claims settlements, and coverage obligations are governed by Allianz&apos;s terms and are the responsibility of Allianz.</p>
             <p><strong>4.3</strong> WF Wealth Management will continue to serve you as your appointed insurance agent and will assist with claims processing and general policy servicing on your behalf.</p>
           </Section>
 

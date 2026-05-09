@@ -42,12 +42,12 @@ export default function RefundPolicyPage() {
               <li>Date and time of payment</li>
               <li>Reason for refund request</li>
             </ul>
-            <p><strong>2.3</strong> Refunds approved within this window will be processed back to the original payment method (FPX bank account or credit/debit card). Processing times are subject to your bank or card issuer's timeline, typically 5–14 business days.</p>
+            <p><strong>2.3</strong> Refunds approved within this window will be processed back to the original payment method (FPX bank account or credit/debit card). Processing times are subject to your bank or card issuer&apos;s timeline, typically 5–14 business days.</p>
           </Section>
 
           <Section heading="3. Cancellation After 24 Hours">
-            <p className="mb-3"><strong>3.1</strong> Refund or cancellation requests made after 24 hours of payment will be handled in accordance with Allianz's standard cancellation procedure.</p>
-            <p className="mb-3"><strong>3.2</strong> If your policy has already been issued, cancellation is subject to Allianz's policy cancellation terms, which may include:</p>
+            <p className="mb-3"><strong>3.1</strong> Refund or cancellation requests made after 24 hours of payment will be handled in accordance with Allianz&apos;s standard cancellation procedure.</p>
+            <p className="mb-3"><strong>3.2</strong> If your policy has already been issued, cancellation is subject to Allianz&apos;s policy cancellation terms, which may include:</p>
             <ul className="mb-3 space-y-1 pl-5" style={{ listStyleType: 'disc' }}>
               <li>Short-rate or pro-rata refund of unused premium (as determined by Allianz)</li>
               <li>Administrative fees or deductions as per the policy contract</li>
@@ -61,7 +61,7 @@ export default function RefundPolicyPage() {
             <ul className="mt-3 space-y-1 pl-5" style={{ listStyleType: 'disc' }}>
               <li>Requests made after 24 hours of payment where the policy has been issued</li>
               <li>Policies where a claim has already been submitted or paid</li>
-              <li>Failure to disclose accurate health or personal information at the time of application (policy may be voided without refund at Allianz's discretion)</li>
+              <li>Failure to disclose accurate health or personal information at the time of application (policy may be voided without refund at Allianz&apos;s discretion)</li>
               <li>Promotional or discounted policies where refund exclusions are stated at the time of purchase</li>
             </ul>
           </Section>
@@ -80,7 +80,7 @@ export default function RefundPolicyPage() {
           </Section>
 
           <Section heading="7. Regulatory Reference">
-            This refund policy is designed to align with the requirements of Bank Negara Malaysia (BNM) and Allianz General Insurance Company (Malaysia) Berhad's standard policy terms. Nothing in this policy limits any rights you may have under Malaysian consumer protection laws.
+            This refund policy is designed to align with the requirements of Bank Negara Malaysia (BNM) and Allianz General Insurance Company (Malaysia) Berhad&apos;s standard policy terms. Nothing in this policy limits any rights you may have under Malaysian consumer protection laws.
           </Section>
 
           <Section heading="8. Changes to This Policy">
