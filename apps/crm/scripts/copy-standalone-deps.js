@@ -48,42 +48,61 @@ fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n');
 fs.mkdirSync(standaloneNodeModules, { recursive: true });
 
 const copied = new Set();
+const queue = [];
+
+// Walk a package's package.json + every nested node_modules/<pkg>/package.json
+// and enqueue all referenced names. Nested node_modules are critical: when
+// npm hoists differently across packages, sub-packages bring their own copy
+// of a dep with its own peer/transitive chain (e.g. google-gax's nested
+// google-auth-library requires gtoken from the standalone root).
+function enqueueFromPackageDir(packageDir) {
+  const depPkgPath = path.join(packageDir, 'package.json');
+  if (fs.existsSync(depPkgPath)) {
+    try {
+      const depPkg = JSON.parse(fs.readFileSync(depPkgPath, 'utf8'));
+      for (const t of Object.keys(depPkg.dependencies || {})) queue.push(t);
+      for (const t of Object.keys(depPkg.optionalDependencies || {})) queue.push(t);
+    } catch {
+      // ignore malformed package.json
+    }
+  }
+  // Recurse into nested node_modules
+  const nestedNm = path.join(packageDir, 'node_modules');
+  if (fs.existsSync(nestedNm)) {
+    for (const entry of fs.readdirSync(nestedNm)) {
+      if (entry.startsWith('.')) continue;
+      if (entry.startsWith('@')) {
+        const scopedDir = path.join(nestedNm, entry);
+        for (const sub of fs.readdirSync(scopedDir)) {
+          enqueueFromPackageDir(path.join(scopedDir, sub));
+        }
+      } else {
+        enqueueFromPackageDir(path.join(nestedNm, entry));
+      }
+    }
+  }
+}
+
 function copyDep(name) {
   if (copied.has(name)) return;
   const src = path.join(repoNodeModules, name);
   if (!fs.existsSync(src)) {
     console.warn(`[postbuild] WARNING: ${name} not found in repo root node_modules`);
+    copied.add(name); // don't retry
     return;
   }
   const dest = path.join(standaloneNodeModules, name);
-  if (fs.existsSync(dest)) {
-    copied.add(name);
-    return;
+  if (!fs.existsSync(dest)) {
+    fs.mkdirSync(path.dirname(dest), { recursive: true });
+    fs.cpSync(src, dest, { recursive: true, dereference: true });
   }
-  fs.mkdirSync(path.dirname(dest), { recursive: true });
-  fs.cpSync(src, dest, { recursive: true, dereference: true });
   copied.add(name);
-
-  // Recursively copy this package's own dependencies
-  const depPkgPath = path.join(src, 'package.json');
-  if (fs.existsSync(depPkgPath)) {
-    try {
-      const depPkg = JSON.parse(fs.readFileSync(depPkgPath, 'utf8'));
-      const transitive = Object.keys(depPkg.dependencies || {});
-      for (const t of transitive) {
-        copyDep(t);
-      }
-      for (const [t, optional] of Object.entries(depPkg.optionalDependencies || {})) {
-        copyDep(t);
-      }
-    } catch (e) {
-      // ignore malformed package.json
-    }
-  }
+  enqueueFromPackageDir(src);
 }
 
-for (const name of runtimeDeps) {
-  copyDep(name);
+queue.push(...runtimeDeps);
+while (queue.length) {
+  copyDep(queue.shift());
 }
 
 console.log(`[postbuild] Copied ${copied.size} packages into standalone/node_modules`);
