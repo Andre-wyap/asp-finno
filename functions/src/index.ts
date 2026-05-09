@@ -1,8 +1,13 @@
 import { onRequest } from 'firebase-functions/v2/https';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
+import { defineSecret } from 'firebase-functions/params';
 import { initializeApp, getApps } from 'firebase-admin/app';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { triggerLeadReminderEmail } from '@asp/shared/onStatusChange';
+
+const RESEND_API_KEY = defineSecret('RESEND_API_KEY');
+const RESEND_FROM_ADDRESS = defineSecret('RESEND_FROM_ADDRESS');
+const TRACKER_BASE_URL = defineSecret('TRACKER_BASE_URL');
 
 if (!getApps().length) {
   initializeApp();
@@ -25,6 +30,7 @@ export const leadReminderTick = onSchedule(
     timeZone: 'Asia/Kuala_Lumpur',
     timeoutSeconds: 540,
     memory: '256MiB',
+    secrets: [RESEND_API_KEY, RESEND_FROM_ADDRESS, TRACKER_BASE_URL],
   },
   async () => {
     const db = getDb();
