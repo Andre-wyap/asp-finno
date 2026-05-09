@@ -1,10 +1,10 @@
 import * as React from 'react';
-import { sendEmail } from './email.js';
-import type { ApplicationStatus } from './status.js';
-import { LeadReminder } from '../emails/LeadReminder.js';
-import { Paid } from '../emails/Paid.js';
-import { PaymentFailed } from '../emails/PaymentFailed.js';
-import { Issued } from '../emails/Issued.js';
+import { sendEmail } from './email';
+import type { ApplicationStatus } from './status';
+import { LeadReminder } from '../emails/LeadReminder';
+import { Paid } from '../emails/Paid';
+import { PaymentFailed } from '../emails/PaymentFailed';
+import { Issued } from '../emails/Issued';
 
 export interface ApplicationSnapshot {
   applicantName: string;
