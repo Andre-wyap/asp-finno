@@ -6,12 +6,25 @@
   "exports": {
     ".": "./src/index.ts",
     "./nricHash": "./src/nricHash.ts",
-    "./status": "./src/status.ts"
+    "./status": "./src/status.ts",
+    "./email": "./src/email.ts",
+    "./onStatusChange": "./src/onStatusChange.ts",
+    "./emails/LeadReminder": "./emails/LeadReminder.tsx",
+    "./emails/Paid": "./emails/Paid.tsx",
+    "./emails/PaymentFailed": "./emails/PaymentFailed.tsx",
+    "./emails/Issued": "./emails/Issued.tsx"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"
   },
+  "dependencies": {
+    "@react-email/components": "^0.0.36",
+    "@react-email/render": "^1.0.4",
+    "react": "^19.0.0",
+    "resend": "^4.5.1"
+  },
   "devDependencies": {
+    "@types/react": "^19.0.10",
     "typescript": "^5.8.3"
   }
 }

@@ -10,8 +10,15 @@ const plusJakartaSans = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: 'Allianz Shield Plus — CRM',
-  description: 'Admin portal for Allianz Shield Plus applications'
+  title: {
+    default: 'Allianz Shield Plus CRM',
+    template: '%s — ASP CRM',
+  },
+  description: 'Admin portal for Allianz Shield Plus applications',
+  robots: {
+    index: false,
+    follow: false,
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

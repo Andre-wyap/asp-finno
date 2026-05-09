@@ -1,6 +1,7 @@
 import { FieldValue } from 'firebase-admin/firestore';
 import { NextResponse } from 'next/server';
 import { canTransitionStatus, type ApplicationStatus } from '@asp/shared';
+import { triggerStatusEmail } from '@asp/shared/onStatusChange';
 import { authError, verifyAdmin } from '../../../../../../lib/auth';
 import { getDb } from '../../../../../../lib/firebaseAdmin';
 
@@ -37,7 +38,8 @@ export async function POST(
     return NextResponse.json({ error: 'Application not found' }, { status: 404 });
   }
 
-  const current = appDoc.data()?.status as ApplicationStatus;
+  const appData = appDoc.data()!;
+  const current = appData.status as ApplicationStatus;
 
   if (!canTransitionStatus(current, to)) {
     return NextResponse.json(
@@ -51,6 +53,7 @@ export async function POST(
   }
 
   const now = FieldValue.serverTimestamp();
+  const policyNumber = body.policyNumber?.trim();
   const updates: Record<string, unknown> = {
     status: to,
     updatedAt: now,
@@ -58,7 +61,7 @@ export async function POST(
   };
 
   if (to === 'issued') {
-    updates.policyNumber = body.policyNumber!.trim();
+    updates.policyNumber = policyNumber;
     updates.issuedAt = now;
   }
 
@@ -69,9 +72,29 @@ export async function POST(
     from: current,
     to,
     actor: { kind: 'admin', id: admin.uid },
-    payload: to === 'issued' ? { policyNumber: body.policyNumber!.trim() } : {},
+    payload: to === 'issued' ? { policyNumber } : {},
     at: now
   });
+
+  // Fire email (non-blocking — status change already committed)
+  const eventsCol = appRef.collection('events');
+  triggerStatusEmail({
+    orderId,
+    application: {
+      applicantName: appData.applicant?.name ?? '',
+      applicantEmail: appData.applicant?.email ?? '',
+      planName: appData.plan?.code ?? '',
+      planCode: appData.plan?.code ?? '',
+      premiumAmount: appData.premium?.amount ?? 0,
+      premiumCurrency: appData.premium?.currency ?? 'MYR',
+      trackerToken: appData.trackerToken ?? '',
+      policyNumber,
+      issuedAt: new Date().toLocaleDateString('en-MY', { year: 'numeric', month: 'long', day: 'numeric' }),
+    },
+    from: current,
+    to,
+    writeEvent: (data) => eventsCol.add({ ...data, at: FieldValue.serverTimestamp() }).then(() => undefined),
+  }).catch((err: unknown) => console.error('triggerStatusEmail_failed', err));
 
   return NextResponse.json({ ok: true });
 }

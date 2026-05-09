@@ -837,7 +837,7 @@ export function ApplicationForm({ plan, ageBand, occupationCategory, premium }: 
                         by WF Wealth Management Sdn Bhd and Allianz General Insurance Company
                         (Malaysia) Berhad for the purpose of processing this insurance
                         application, as described in the{' '}
-                        <a href="/privacy" className="text-secondary underline hover:no-underline">
+                        <a href="/privacy-policy" className="text-secondary underline hover:no-underline">
                           Privacy Policy
                         </a>
                         .

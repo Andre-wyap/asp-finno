@@ -1,4 +1,4 @@
-import { FieldValue } from 'firebase-admin/firestore';
+import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { NextResponse } from 'next/server';
 import { getDb } from '../../../../lib/firebaseAdmin';
 import {
@@ -8,6 +8,8 @@ import {
   type SenangPayReturnParams,
   verifyReturnHash
 } from '../../../../lib/senangPay';
+import { triggerStatusEmail } from '@asp/shared/onStatusChange';
+import type { ApplicationStatus } from '@asp/shared/status';
 
 function jsonError(message: string, status = 400) {
   return NextResponse.json({ error: message }, { status });
@@ -35,6 +37,11 @@ async function paramsFromRequest(request: Request) {
   }
 
   return new URL(request.url).searchParams;
+}
+
+function formatDate(ts: Timestamp | undefined): string {
+  if (!ts) return new Date().toLocaleDateString('en-MY', { year: 'numeric', month: 'long', day: 'numeric' });
+  return ts.toDate().toLocaleDateString('en-MY', { year: 'numeric', month: 'long', day: 'numeric' });
 }
 
 async function handleCallback(request: Request) {
@@ -67,6 +74,9 @@ async function handleCallback(request: Request) {
         ? 'payment_failed'
         : null;
 
+  let applicationData: FirebaseFirestore.DocumentData | undefined;
+  let statusChanged = false;
+
   await db.runTransaction(async (transaction) => {
     const [applicationSnapshot, eventSnapshot] = await Promise.all([
       transaction.get(applicationRef),
@@ -81,6 +91,7 @@ async function handleCallback(request: Request) {
       return;
     }
 
+    applicationData = applicationSnapshot.data();
     const currentStatus = applicationSnapshot.get('status') as string | undefined;
     const statusPatch =
       nextStatus && currentStatus !== nextStatus
@@ -89,6 +100,8 @@ async function handleCallback(request: Request) {
             ...(nextStatus === 'paid' ? { paidAt: FieldValue.serverTimestamp() } : {})
           }
         : {};
+
+    statusChanged = !!(nextStatus && currentStatus !== nextStatus);
 
     transaction.update(applicationRef, {
       ...statusPatch,
@@ -119,7 +132,7 @@ async function handleCallback(request: Request) {
       at: FieldValue.serverTimestamp()
     });
 
-    if (nextStatus && currentStatus !== nextStatus) {
+    if (statusChanged) {
       transaction.set(applicationRef.collection('events').doc(), {
         type: 'status_change',
         from: currentStatus ?? null,
@@ -133,6 +146,28 @@ async function handleCallback(request: Request) {
       });
     }
   });
+
+  // Trigger email after transaction commits (non-blocking, errors are logged/stored)
+  if (statusChanged && nextStatus && applicationData) {
+    const eventsCol = applicationRef.collection('events');
+    triggerStatusEmail({
+      orderId: params.orderId,
+      application: {
+        applicantName: applicationData.applicant?.name ?? '',
+        applicantEmail: applicationData.applicant?.email ?? '',
+        planName: applicationData.plan?.code ?? '',
+        planCode: applicationData.plan?.code ?? '',
+        premiumAmount: applicationData.premium?.amount ?? 0,
+        premiumCurrency: applicationData.premium?.currency ?? 'MYR',
+        trackerToken: applicationData.trackerToken ?? '',
+        failureMessage: params.message || undefined,
+        paidAt: nextStatus === 'paid' ? new Date().toLocaleDateString('en-MY', { year: 'numeric', month: 'long', day: 'numeric' }) : undefined,
+      },
+      from: (applicationData.status as ApplicationStatus) ?? null,
+      to: nextStatus as ApplicationStatus,
+      writeEvent: (data) => eventsCol.add({ ...data, at: FieldValue.serverTimestamp() }).then(() => undefined),
+    }).catch((err: unknown) => console.error('triggerStatusEmail_failed', err));
+  }
 
   return NextResponse.json({ ok: true, orderId: params.orderId, status: providerStatus });
 }
