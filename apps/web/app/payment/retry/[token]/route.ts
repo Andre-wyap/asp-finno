@@ -16,18 +16,26 @@ function sanitizeDetail(value: string) {
   return value.replace(/[^A-Za-z0-9.,\-_]/g, '_').slice(0, 500);
 }
 
-function trackerRedirect(request: NextRequest, token: string) {
-  return NextResponse.redirect(new URL(`/track/${token}`, request.url));
+function publicBaseUrl() {
+  return process.env.TRACKER_BASE_URL ?? 'https://asp.finnomalaysia.com';
+}
+
+function publicRedirect(path: string) {
+  return NextResponse.redirect(new URL(path, publicBaseUrl()));
+}
+
+function trackerRedirect(token: string) {
+  return publicRedirect(`/track/${token}`);
 }
 
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<RouteParams> }
 ) {
   const { token } = await params;
 
   if (!/^[0-9a-fA-F-]{36}$/.test(token)) {
-    return NextResponse.redirect(new URL('/#plans', request.url));
+    return publicRedirect('/#plans');
   }
 
   const db = getDb();
@@ -39,14 +47,14 @@ export async function GET(
   const [applicationDoc] = snapshot.docs;
 
   if (!applicationDoc) {
-    return NextResponse.redirect(new URL('/#plans', request.url));
+    return publicRedirect('/#plans');
   }
 
   const application = applicationDoc.data();
   const status = application.status;
 
   if (status !== 'lead' && status !== 'payment_failed') {
-    return trackerRedirect(request, token);
+    return trackerRedirect(token);
   }
 
   const applicant = application.applicant ?? {};
@@ -59,7 +67,7 @@ export async function GET(
     : String(payment.amount ?? '');
 
   if (!amount || !applicant.email || !applicant.mobile || !applicant.name) {
-    return trackerRedirect(request, token);
+    return trackerRedirect(token);
   }
 
   const orderId = applicationDoc.id;
