@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { FieldValue } from 'firebase-admin/firestore';
 import { normalizePromoCode, PROMO_DISCOUNT_TYPES } from '@asp/shared/promo';
+import { adminActivityActor, writeActivityLog } from '../../../../../lib/activity';
 import { authError, verifyAdmin } from '../../../../../lib/auth';
 import { getDb } from '../../../../../lib/firebaseAdmin';
 
@@ -20,8 +21,9 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ code: string }> }
 ) {
+  let admin;
   try {
-    await verifyAdmin();
+    admin = await verifyAdmin();
   } catch {
     return authError('Unauthenticated', 401);
   }
@@ -72,6 +74,13 @@ export async function PATCH(
   if (body.notes !== undefined) updates.notes = body.notes;
 
   await ref.update(updates);
+  await writeActivityLog(db, {
+    actor: adminActivityActor(admin),
+    action: 'promo_updated',
+    orderId: null,
+    summary: `Promo code ${code} updated`,
+    payload: { code }
+  });
   return NextResponse.json({ ok: true });
 }
 
@@ -79,8 +88,9 @@ export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ code: string }> }
 ) {
+  let admin;
   try {
-    await verifyAdmin();
+    admin = await verifyAdmin();
   } catch {
     return authError('Unauthenticated', 401);
   }
@@ -96,5 +106,12 @@ export async function DELETE(
   }
 
   await ref.update({ active: false, updatedAt: FieldValue.serverTimestamp() });
+  await writeActivityLog(db, {
+    actor: adminActivityActor(admin),
+    action: 'promo_updated',
+    orderId: null,
+    summary: `Promo code ${code} deactivated`,
+    payload: { code, active: false }
+  });
   return NextResponse.json({ ok: true });
 }

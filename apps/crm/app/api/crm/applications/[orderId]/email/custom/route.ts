@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { FieldValue } from 'firebase-admin/firestore';
 import { Resend } from 'resend';
+import { adminActivityActor, writeActivityLog } from '../../../../../../../lib/activity';
 import { authError, verifyAdmin } from '../../../../../../../lib/auth';
 import { getDb } from '../../../../../../../lib/firebaseAdmin';
 
@@ -84,7 +85,7 @@ export async function POST(
     return NextResponse.json({ error: error.message }, { status: 502 });
   }
 
-  await appRef.collection('events').add({
+  const eventRef = await appRef.collection('events').add({
     type: 'email_sent',
     actor: { kind: 'admin', id: admin.uid },
     payload: {
@@ -95,6 +96,13 @@ export async function POST(
       triggeredBy: 'admin_custom',
     },
     at: FieldValue.serverTimestamp(),
+  });
+  await writeActivityLog(db, {
+    actor: adminActivityActor(admin),
+    action: 'email_sent',
+    orderId,
+    summary: 'Custom email sent',
+    payload: { eventId: eventRef.id, template: 'custom' }
   });
 
   return NextResponse.json({ ok: true, messageId: data?.id });

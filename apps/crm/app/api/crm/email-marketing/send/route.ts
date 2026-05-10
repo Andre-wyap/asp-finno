@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { FieldValue } from 'firebase-admin/firestore';
 import { Resend } from 'resend';
+import { adminActivityActor, writeActivityLog } from '../../../../../lib/activity';
 import { authError, verifyAdmin } from '../../../../../lib/auth';
 import { getDb } from '../../../../../lib/firebaseAdmin';
 import { buildRecipientQuery, type MarketingFilters } from '../../../../../lib/marketing';
@@ -197,6 +198,13 @@ export async function POST(request: Request) {
     failed,
     completedAt: FieldValue.serverTimestamp(),
     failures: failures.slice(0, 50)
+  });
+  await writeActivityLog(db, {
+    actor: adminActivityActor(admin),
+    action: sent > 0 ? 'marketing_email_sent' : 'marketing_email_failed',
+    orderId: null,
+    summary: `Marketing campaign "${campaignName}" completed: ${sent} sent, ${failed} failed`,
+    payload: { campaignId, sent, failed, total: recipients.length }
   });
 
   return NextResponse.json({ ok: true, campaignId, sent, failed, total: recipients.length });

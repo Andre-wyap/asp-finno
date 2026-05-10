@@ -230,6 +230,18 @@ Email-related event payload shapes:
 - `email_sent` → `{ template, resendMessageId, to, subject, triggeredBy }`
 - `email_event` → `{ resendMessageId, kind: "delivered"|"bounced"|"opened"|"clicked"|"complaint", raw }` — joined back to the originating `email_sent` row by `resendMessageId`.
 
+`activityLogs/{logId}` — top-level CRM audit feed optimized for cheap reads.
+
+```
+activityLogs/{logId}
+  at:      Timestamp
+  actor:   { kind: "admin" | "system", id: string | null, email?: string | null }
+  action:  string
+  orderId: string | null
+  summary: string        # PDPA-safe display text
+  payload: map           # PDPA-safe; no plaintext NRIC, raw email body, or raw CSV contents
+```
+
 `importBatches/{batchId}` — CRM CSV import audit record.
 
 ```
@@ -362,8 +374,9 @@ The CRM must support the operational tasks needed after application capture with
 
 - The CRM activity log is the human-readable audit view for admin operations.
 - Minimum columns: user, timestamp, action, order ID/application ID, import batch ID when relevant, and a PDPA-safe summary.
-- It is initially sourced from an `events` collection group query, and later import batch events, covering status changes, notes, emails, archives, unarchives, and imports.
-- Every state-changing CRM endpoint stamps `actor: { kind: "admin", id, email }` consistently.
+- It is sourced from top-level `activityLogs`, not by scanning application event subcollections.
+- Initial page load reads 10 activity documents. The "Load 50 more" action uses Firestore cursor pagination (`orderBy("at", "desc")` + `startAfter`) and reads the next 50.
+- Every state-changing CRM endpoint writes a PDPA-safe `activityLogs` row and stamps `actor: { kind: "admin", id, email }` consistently.
 
 ### Endpoints (CRM backend)
 
@@ -373,7 +386,7 @@ The CRM must support the operational tasks needed after application capture with
 | `POST /api/crm/applications/:orderId/unarchive` | `{ reason? }` → restores application to normal lists, writes `application_unarchived` |
 | `POST /api/crm/imports/validate` | CSV dry-run validation and duplicate/conflict preview |
 | `POST /api/crm/imports/commit` | Writes validated import rows and `importBatches/{batchId}` metadata |
-| `GET /api/crm/activity` | Paginated global activity log with filters |
+| `GET /api/crm/activity` | Paginated global activity log; initial page uses 10 logs, load-more uses 50 |
 
 ---
 

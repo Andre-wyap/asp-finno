@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { APPLICATION_STATUSES, type ApplicationStatus } from '@asp/shared/status';
 import { triggerStatusEmail } from '@asp/shared/onStatusChange';
 import { planNameFromCode } from '@asp/pricing';
+import { adminActivityActor, writeActivityLog } from '../../../../../../lib/activity';
 import { authError, verifyAdmin } from '../../../../../../lib/auth';
 import { getDb } from '../../../../../../lib/firebaseAdmin';
 
@@ -76,7 +77,7 @@ export async function POST(
 
   await appRef.update(updates);
 
-  await appRef.collection('events').add({
+  const statusEventRef = await appRef.collection('events').add({
     type: 'status_change',
     from: current,
     to,
@@ -88,13 +89,27 @@ export async function POST(
     },
     at: now
   });
+  await writeActivityLog(db, {
+    actor: adminActivityActor(admin),
+    action: 'status_change',
+    orderId,
+    summary: `${current} -> ${to}`,
+    payload: { from: current, to, eventId: statusEventRef.id }
+  });
 
   if (note) {
-    await appRef.collection('events').add({
+    const noteEventRef = await appRef.collection('events').add({
       type: 'note',
       actor: { kind: 'admin', id: admin.uid },
       payload: { note, context: `manual_status_change:${current}->${to}` },
       at: now
+    });
+    await writeActivityLog(db, {
+      actor: adminActivityActor(admin),
+      action: 'note',
+      orderId,
+      summary: 'Note added during status change',
+      payload: { eventId: noteEventRef.id }
     });
   }
 

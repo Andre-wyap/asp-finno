@@ -1,5 +1,6 @@
 import { FieldValue } from 'firebase-admin/firestore';
 import { NextResponse } from 'next/server';
+import { adminActivityActor, writeActivityLog } from '../../../../../../lib/activity';
 import { authError, verifyAdmin } from '../../../../../../lib/auth';
 import { getDb } from '../../../../../../lib/firebaseAdmin';
 
@@ -54,6 +55,13 @@ export async function POST(
     actor: { kind: 'admin', id: admin.uid, email: admin.email ?? null },
     payload: { reason: body.reason?.trim() || null },
     at: now
+  });
+  await writeActivityLog(db, {
+    actor: adminActivityActor(admin),
+    action: 'application_unarchived',
+    orderId,
+    summary: 'Application restored',
+    payload: { eventId: eventRef.id, restoredStatus }
   });
 
   return NextResponse.json({ ok: true, eventId: eventRef.id });

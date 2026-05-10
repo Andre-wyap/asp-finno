@@ -1,5 +1,6 @@
 import { FieldValue } from 'firebase-admin/firestore';
 import { NextResponse } from 'next/server';
+import { adminActivityActor, writeActivityLog } from '../../../../../../lib/activity';
 import { authError, verifyAdmin } from '../../../../../../lib/auth';
 import { getDb } from '../../../../../../lib/firebaseAdmin';
 
@@ -46,6 +47,13 @@ export async function POST(
   });
 
   await appRef.update({ updatedAt: FieldValue.serverTimestamp() });
+  await writeActivityLog(db, {
+    actor: adminActivityActor(admin),
+    action: 'note',
+    orderId,
+    summary: 'Note added',
+    payload: { eventId: eventRef.id }
+  });
 
   return NextResponse.json({ ok: true, eventId: eventRef.id });
 }

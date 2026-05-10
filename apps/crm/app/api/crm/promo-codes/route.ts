@@ -5,6 +5,7 @@ import {
   PROMO_DISCOUNT_TYPES,
   type PromoDiscountType
 } from '@asp/shared/promo';
+import { adminActivityActor, writeActivityLog } from '../../../../lib/activity';
 import { authError, verifyAdmin } from '../../../../lib/auth';
 import { getDb } from '../../../../lib/firebaseAdmin';
 
@@ -106,6 +107,13 @@ export async function POST(request: Request) {
     createdBy: admin.uid,
     createdAt: FieldValue.serverTimestamp(),
     updatedAt: FieldValue.serverTimestamp()
+  });
+  await writeActivityLog(db, {
+    actor: adminActivityActor(admin),
+    action: 'promo_created',
+    orderId: null,
+    summary: `Promo code ${code} created`,
+    payload: { code }
   });
 
   return NextResponse.json({ ok: true, code });

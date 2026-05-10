@@ -256,7 +256,9 @@ Working tracker for Allianz Shield Plus. Spec lives in [Claude.md](./Claude.md);
 
 ### CRM Activity Log
 - [x] Add a global CRM activity log page/table with user, timestamp, action, application/order ID, and safe payload summary
-- [ ] Feed the activity log from application `events` plus import batch events so status changes, notes, emails, archives, and imports are visible in one place (application `events` are live; import batch events pending CSV import)
+- [x] Store new CRM audit rows in top-level `activityLogs` so the Activity Log page does not scan application event subcollections
+- [x] Initial Activity Log page load reads 10 logs sorted by date; "Load 50 more" uses Firestore cursor pagination
+- [ ] Feed import batch events into `activityLogs` once CSV import exists
 - [ ] Add filters for admin user, action type, date range, order ID, and import batch ID
 - [ ] Ensure every state-changing CRM endpoint stamps `actor: { kind: "admin", id, email }` consistently
 - [ ] Keep activity log payloads PDPA-safe: no plaintext NRIC, no full raw email bodies, no raw uploaded CSV contents

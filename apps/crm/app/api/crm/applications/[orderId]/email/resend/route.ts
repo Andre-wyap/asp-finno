@@ -5,6 +5,7 @@ import { getDb } from '../../../../../../../lib/firebaseAdmin';
 import { triggerStatusEmail, triggerLeadReminderEmail } from '@asp/shared/onStatusChange';
 import type { ApplicationStatus } from '@asp/shared/status';
 import { planNameFromCode } from '@asp/pricing';
+import { adminActivityActor, writeActivityLog } from '../../../../../../../lib/activity';
 
 type TemplateKey = ApplicationStatus | 'lead_reminder';
 
@@ -85,6 +86,13 @@ export async function POST(
       return jsonError(result.error ?? 'Unable to send template.', 502);
     }
   }
+  await writeActivityLog(db, {
+    actor: adminActivityActor(admin),
+    action: 'email_sent',
+    orderId,
+    summary: `Resent ${template} email`,
+    payload: { template }
+  });
 
   return NextResponse.json({ ok: true });
 }
