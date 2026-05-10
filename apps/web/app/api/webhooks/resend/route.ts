@@ -27,6 +27,11 @@ function kindFromType(type: string): EmailEventKind | null {
   return map[type] ?? null;
 }
 
+function orderIdFromSubject(subject: string | undefined): string | null {
+  const match = subject?.match(/\bASP-\d{8}-[A-Z0-9]{8}\b/);
+  return match?.[0] ?? null;
+}
+
 export async function POST(request: Request) {
   const secret = process.env.RESEND_WEBHOOK_SECRET;
   if (!secret) {
@@ -64,23 +69,44 @@ export async function POST(request: Request) {
     const db = getDb();
 
     // Find the email_sent event that matches this resendMessageId
-    const emailSentQuery = await db
-      .collectionGroup('events')
-      .where('type', '==', 'email_sent')
-      .where('payload.resendMessageId', '==', resendMessageId)
-      .limit(1)
-      .get();
+    let applicationRef: FirebaseFirestore.DocumentReference | null = null;
+    let lookupError: unknown = null;
 
-    if (emailSentQuery.empty) {
-      // Message not found — could be from a different send path; just record and return
-      console.warn('resend_webhook_no_matching_email_sent', { resendMessageId, kind });
-      return NextResponse.json({ ok: true });
+    try {
+      const emailSentQuery = await db
+        .collectionGroup('events')
+        .where('type', '==', 'email_sent')
+        .where('payload.resendMessageId', '==', resendMessageId)
+        .limit(1)
+        .get();
+
+      if (!emailSentQuery.empty) {
+        // Derive the application ref from the event's path: applications/{orderId}/events/{eventId}
+        applicationRef = emailSentQuery.docs[0].ref.parent.parent;
+      }
+    } catch (err) {
+      lookupError = err;
     }
 
-    const emailSentDoc = emailSentQuery.docs[0];
-    // Derive the application ref from the event's path: applications/{orderId}/events/{eventId}
-    const applicationRef = emailSentDoc.ref.parent.parent;
     if (!applicationRef) {
+      const orderId = orderIdFromSubject(event.data.subject);
+      if (orderId) {
+        const fallbackRef = db.collection('applications').doc(orderId);
+        const fallbackSnapshot = await fallbackRef.get();
+        applicationRef = fallbackSnapshot.exists ? fallbackRef : null;
+      }
+    }
+
+    if (lookupError && applicationRef) {
+      console.warn('resend_webhook_used_subject_fallback', { resendMessageId, kind });
+    }
+
+    if (!applicationRef) {
+      // Message not found — could be from a different send path; just record and return
+      if (lookupError) {
+        console.error('resend_webhook_email_sent_lookup_failed', { resendMessageId, kind, err: lookupError });
+      }
+      console.warn('resend_webhook_no_matching_email_sent', { resendMessageId, kind });
       return NextResponse.json({ ok: true });
     }
 
