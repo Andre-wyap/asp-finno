@@ -6,6 +6,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./nricHash": "./src/nricHash.ts",
+    "./mobile": "./src/mobile.ts",
+    "./nric": "./src/nric.ts",
     "./status": "./src/status.ts",
     "./email": "./src/email.ts",
     "./onStatusChange": "./src/onStatusChange.ts",

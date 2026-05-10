@@ -1,8 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { CheckCircle2, Clock3, FileCheck2, ShieldCheck } from 'lucide-react';
-import type { ApplicationStatus } from '@asp/shared';
-import { APPLICATION_STATUSES } from '@asp/shared';
+import { APPLICATION_STATUSES, type ApplicationStatus } from '@asp/shared/status';
 import { getDb } from '../../../lib/firebaseAdmin';
 
 export const dynamic = 'force-dynamic';

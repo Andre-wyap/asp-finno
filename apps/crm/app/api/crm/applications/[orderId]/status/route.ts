@@ -1,6 +1,6 @@
 import { FieldValue } from 'firebase-admin/firestore';
 import { NextResponse } from 'next/server';
-import { canTransitionStatus, type ApplicationStatus } from '@asp/shared';
+import { canTransitionStatus, type ApplicationStatus } from '@asp/shared/status';
 import { triggerStatusEmail } from '@asp/shared/onStatusChange';
 import { authError, verifyAdmin } from '../../../../../../lib/auth';
 import { getDb } from '../../../../../../lib/firebaseAdmin';

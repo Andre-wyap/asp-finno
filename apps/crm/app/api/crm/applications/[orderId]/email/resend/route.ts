@@ -3,7 +3,7 @@ import { FieldValue } from 'firebase-admin/firestore';
 import { authError, verifyAdmin } from '../../../../../../../lib/auth';
 import { getDb } from '../../../../../../../lib/firebaseAdmin';
 import { triggerStatusEmail, triggerLeadReminderEmail } from '@asp/shared/onStatusChange';
-import type { ApplicationStatus } from '@asp/shared';
+import type { ApplicationStatus } from '@asp/shared/status';
 
 type TemplateKey = ApplicationStatus | 'lead_reminder';
 

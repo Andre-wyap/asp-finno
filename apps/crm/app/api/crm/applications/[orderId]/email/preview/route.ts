@@ -7,7 +7,7 @@ import { LeadReminder } from '@asp/shared/emails/LeadReminder';
 import { Paid } from '@asp/shared/emails/Paid';
 import { PaymentFailed } from '@asp/shared/emails/PaymentFailed';
 import { Issued } from '@asp/shared/emails/Issued';
-import type { ApplicationStatus } from '@asp/shared';
+import type { ApplicationStatus } from '@asp/shared/status';
 
 type TemplateKey = ApplicationStatus | 'lead_reminder';
 

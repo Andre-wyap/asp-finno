@@ -10,7 +10,8 @@ import {
   type OccupationCategory,
   type Plan,
 } from '@asp/pricing';
-import { normalizeMobile, parseNric, validateMobile, validateNric } from '@asp/shared';
+import { normalizeMobile, validateMobile } from '@asp/shared/mobile';
+import { parseNric, validateNric } from '@asp/shared/nric';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -109,6 +110,23 @@ const EMPTY_NOMINEE: NomineeForm = {
   relationship: '',
   nationality: 'Malaysian',
 };
+
+async function readCheckoutResponse(response: Response) {
+  const contentType = response.headers.get('content-type') ?? '';
+
+  if (contentType.includes('application/json')) {
+    return (await response.json()) as {
+      redirectUrl?: string;
+      error?: string;
+    };
+  }
+
+  return {
+    error: response.ok
+      ? 'Payment response was invalid. Please try again.'
+      : 'Unable to initiate payment. Please try again or contact support.',
+  };
+}
 
 // ---------------------------------------------------------------------------
 // Validation
@@ -460,10 +478,7 @@ export function ApplicationForm({ plan, ageBand, occupationCategory, premium }: 
         }),
       });
 
-      const result = (await response.json()) as {
-        redirectUrl?: string;
-        error?: string;
-      };
+      const result = await readCheckoutResponse(response);
 
       if (!response.ok || !result.redirectUrl) {
         throw new Error(result.error ?? 'Unable to initiate payment');
