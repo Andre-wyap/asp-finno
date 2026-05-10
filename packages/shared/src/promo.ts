@@ -1,5 +1,6 @@
 export const PROMO_DISCOUNT_TYPES = ['percent', 'fixed'] as const;
 export type PromoDiscountType = (typeof PROMO_DISCOUNT_TYPES)[number];
+export const MIN_PROMO_PAYABLE_AMOUNT = 2;
 
 export interface PromoCode {
   code: string;
@@ -34,11 +35,13 @@ export function calculateDiscount(
   promo: Pick<PromoCode, 'discountType' | 'value'>,
   baseAmount: number
 ): number {
+  const maxDiscount = Math.max(0, baseAmount - MIN_PROMO_PAYABLE_AMOUNT);
+
   if (promo.discountType === 'percent') {
     const pct = Math.max(0, Math.min(100, promo.value));
-    return Math.round(baseAmount * pct) / 100;
+    return Math.min(Math.round(baseAmount * pct) / 100, maxDiscount);
   }
-  return Math.min(promo.value, baseAmount);
+  return Math.min(promo.value, maxDiscount);
 }
 
 export function validatePromoForUse(

@@ -1,5 +1,6 @@
 import { FieldValue } from 'firebase-admin/firestore';
 import { NextRequest, NextResponse } from 'next/server';
+import { MIN_PROMO_PAYABLE_AMOUNT } from '@asp/shared/promo';
 import { getDb } from '../../../../lib/firebaseAdmin';
 import {
   buildPaymentUrl,
@@ -62,8 +63,12 @@ export async function GET(
   const payment = application.payment ?? {};
   const plan = application.plan ?? {};
   const amountNumber = typeof premium.amount === 'number' ? premium.amount : Number(payment.amount);
-  const amount = Number.isFinite(amountNumber)
-    ? formatAmount(amountNumber)
+  const normalizedAmountNumber =
+    Number.isFinite(amountNumber) && amountNumber > 0 && amountNumber < MIN_PROMO_PAYABLE_AMOUNT
+      ? MIN_PROMO_PAYABLE_AMOUNT
+      : amountNumber;
+  const amount = Number.isFinite(normalizedAmountNumber)
+    ? formatAmount(normalizedAmountNumber)
     : String(payment.amount ?? '');
 
   if (!amount || !applicant.email || !applicant.mobile || !applicant.name) {
@@ -78,11 +83,22 @@ export async function GET(
       : sanitizeDetail(`Allianz_Shield_Plus_${plan.code ?? 'Plan'}_${orderId}`);
   const hash = generatePaymentHash({ secret, detail, amount, orderId });
 
-  await applicationDoc.ref.update({
+  const updatePayload: Record<string, unknown> = {
     'payment.status': 'retry_started',
     'payment.merchantId': merchantId,
     updatedAt: FieldValue.serverTimestamp()
-  });
+  };
+
+  if (normalizedAmountNumber !== amountNumber) {
+    updatePayload['premium.amount'] = normalizedAmountNumber;
+    updatePayload['payment.amount'] = amount;
+
+    if (typeof premium.subtotal === 'number') {
+      updatePayload['premium.discountAmount'] = Math.max(0, premium.subtotal - normalizedAmountNumber);
+    }
+  }
+
+  await applicationDoc.ref.update(updatePayload);
 
   await applicationDoc.ref.collection('events').add({
     type: 'payment_retry_started',
