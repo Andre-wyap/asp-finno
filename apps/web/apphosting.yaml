@@ -12,6 +12,8 @@ env:
     secret: SENANGPAY_MERCHANT_ID
   - variable: SENANGPAY_SECRET
     secret: SENANGPAY_SECRET
+  - variable: SENANGPAY_MODE
+    value: production
   - variable: NRIC_HASH_PEPPER
     secret: NRIC_HASH_PEPPER
   - variable: TRACKER_BASE_URL

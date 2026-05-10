@@ -16,7 +16,7 @@ const LIVE_PAYMENT_BASE_URL = 'https://app.senangpay.my/payment';
 export function getSenangPayConfig() {
   const merchantId = process.env.SENANGPAY_MERCHANT_ID;
   const secret = process.env.SENANGPAY_SECRET;
-  const mode = process.env.SENANGPAY_MODE ?? 'sandbox';
+  const mode = process.env.SENANGPAY_MODE ?? 'production';
 
   if (!merchantId) {
     throw new Error('SENANGPAY_MERCHANT_ID is required');

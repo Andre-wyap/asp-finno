@@ -78,15 +78,15 @@ Working tracker for Allianz Shield Plus. Spec lives in [Claude.md](./Claude.md);
 
 ## Phase 4: Payment Integration (Senang Pay)
 - [x] Set up Senang Pay merchant account & API keys
-- [ ] Configure Senang Pay dashboard URLs for local/sandbox testing:
-  - [ ] Return URL → `http://localhost:3000/payment/result`
-  - [ ] Callback URL → `http://localhost:3000/api/checkout/callback`
+- [x] Configure Senang Pay dashboard URLs for production/live payment:
+  - [x] Return URL → `https://asp.finnomalaysia.com/payment/result`
+  - [x] Callback URL → `https://asp.finnomalaysia.com/api/checkout/callback`
 - [x] `POST /api/checkout/initiate` — generates `ASP-<yyyymmdd>-<random>` order ID, writes `lead` doc
 - [x] Senang Pay return URL handler (browser redirect) → `/payment/result`
 - [x] Senang Pay server-to-server callback (with hash verification) — idempotent
 - [x] Payment success page
 - [x] Payment failure / retry page
-- [ ] Test credit card, e-wallet, and FPX flows in sandbox
+- [ ] Test credit card, e-wallet, and FPX flows with production/live Senang Pay credentials
 
 ## Phase 5: Firestore Backend
 - [x] Firebase project + Firestore database were provisioned in Phase 1's CD bootstrap (current database location: `nam5`)
@@ -162,7 +162,7 @@ Working tracker for Allianz Shield Plus. Spec lives in [Claude.md](./Claude.md);
 - [ ] Add the two CNAME records at the `finnomalaysia.com` DNS provider (set DNS-only / grey cloud if Cloudflare-fronted)
 - [ ] Update Resend webhook URL to `https://asp.finnomalaysia.com/api/webhooks/resend`
 - [x] Update `TRACKER_BASE_URL` secret to `https://asp.finnomalaysia.com`
-- [ ] Update Senang Pay return URL + callback URL in the Senang Pay merchant dashboard to the production hostnames
+- [x] Update Senang Pay return URL + callback URL in the Senang Pay merchant dashboard to the production hostnames
 - [ ] Verify the auto-deploy from Phase 1 still rolls out cleanly to both custom domains (no manual deploy step needed)
-- [ ] End-to-end test with a real Senang Pay sandbox transaction
+- [ ] End-to-end test with a real Senang Pay production/live transaction
 - [ ] End-to-end test full journey: lead → reminder email → paid → issued → all four emails delivered + webhook events recorded
