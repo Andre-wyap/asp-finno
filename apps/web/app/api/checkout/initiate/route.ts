@@ -10,6 +10,7 @@ import {
   validatePromoForUse,
   type PromoCode
 } from '@asp/shared/promo';
+import { triggerLeadReminderEmail } from '@asp/shared/onStatusChange';
 import { getDb } from '../../../../lib/firebaseAdmin';
 import { generateOrderId } from '../../../../lib/orders';
 import {
@@ -275,7 +276,7 @@ export async function POST(request: Request) {
     const underwriting = getUnderwritingAssessment(validated.applicant);
 
     await db.collection('applications').doc(orderId).set({
-      status: 'lead',
+      status: 'applied',
       applicant: {
         name: validated.applicant.name?.trim(),
         nricHash: hashNric(validated.applicant.nric ?? '', nricHashPepper),
@@ -342,11 +343,42 @@ export async function POST(request: Request) {
     await db.collection('applications').doc(orderId).collection('events').add({
       type: 'status_change',
       from: null,
-      to: 'lead',
+      to: 'applied',
       actor: { kind: 'customer', id: null },
       payload: { source: 'checkout_initiate' },
       at: FieldValue.serverTimestamp()
     });
+
+    const appRef = db.collection('applications').doc(orderId);
+    const eventsCol = appRef.collection('events');
+    const appliedEmailResult = await triggerLeadReminderEmail({
+      orderId,
+      application: {
+        applicantName: validated.applicant.name?.trim() ?? '',
+        applicantEmail: validated.applicant.email?.trim().toLowerCase() ?? '',
+        planName: validated.plan.code,
+        planCode: validated.plan.code,
+        premiumAmount: totalPayable,
+        premiumCurrency: 'MYR',
+        trackerToken,
+      },
+      triggeredBy: 'application_applied',
+      actorId: 'checkout',
+      writeEvent: (data) =>
+        eventsCol.add({ ...data, at: FieldValue.serverTimestamp() }).then(() => undefined),
+    });
+
+    if (appliedEmailResult.ok) {
+      await appRef.update({
+        reminderSent: true,
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+    } else {
+      console.error('application_applied_email_failed', {
+        orderId,
+        error: appliedEmailResult.error,
+      });
+    }
 
     const redirectUrl = buildPaymentUrl({
       merchantId,

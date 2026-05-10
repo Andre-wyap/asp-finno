@@ -49,9 +49,9 @@ export async function POST(
   const writeEvent = (data: Record<string, unknown>) =>
     eventsCol.add({ ...data, at: FieldValue.serverTimestamp(), actor: { kind: 'admin', id: admin.uid } }).then(() => undefined);
 
-  // Guard: lead_reminder only makes sense if still a lead
-  if (template === 'lead_reminder' && appData.status !== 'lead') {
-    return jsonError('lead_reminder can only be resent when status is "lead"', 422);
+  // Guard: lead_reminder only makes sense before payment is complete
+  if (template === 'lead_reminder' && appData.status !== 'applied' && appData.status !== 'lead') {
+    return jsonError('lead_reminder can only be resent when status is "applied"', 422);
   }
 
   const application = {

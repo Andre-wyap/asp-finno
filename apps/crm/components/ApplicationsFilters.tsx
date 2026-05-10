@@ -6,10 +6,11 @@ import { Search } from 'lucide-react';
 
 const STATUS_OPTIONS = [
   { value: '', label: 'All statuses' },
-  { value: 'lead', label: 'Lead' },
+  { value: 'applied', label: 'Applied' },
   { value: 'paid', label: 'Paid' },
   { value: 'payment_failed', label: 'Payment Failed' },
-  { value: 'issued', label: 'Issued' }
+  { value: 'issued', label: 'Issued' },
+  { value: 'drop', label: 'Drop' }
 ];
 
 const FIELD_OPTIONS = [

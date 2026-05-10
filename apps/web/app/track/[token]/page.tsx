@@ -25,7 +25,7 @@ type TrackerApplication = {
 
 const steps = [
   {
-    key: 'lead',
+    key: 'applied',
     title: 'Application received',
     description: 'Your application has been submitted for processing.',
     icon: ShieldCheck
@@ -51,6 +51,10 @@ const steps = [
 ] as const;
 
 const statusCopy: Record<ApplicationStatus, { title: string; description: string }> = {
+  applied: {
+    title: 'Application received',
+    description: 'We have your application. Complete payment if you have not done so yet.'
+  },
   lead: {
     title: 'Application received',
     description: 'We have your application. Complete payment if you have not done so yet.'
@@ -66,6 +70,10 @@ const statusCopy: Record<ApplicationStatus, { title: string; description: string
   issued: {
     title: 'Policy issued',
     description: 'Your policy has been issued.'
+  },
+  drop: {
+    title: 'Application closed',
+    description: 'This application is no longer active. Please contact support if this is unexpected.'
   }
 };
 
@@ -103,7 +111,7 @@ function currentStepIndex(application: TrackerApplication) {
 }
 
 function stepDate(application: TrackerApplication, stepKey: (typeof steps)[number]['key']) {
-  if (stepKey === 'lead') return application.createdAt;
+  if (stepKey === 'applied') return application.createdAt;
   if (stepKey === 'paid') return application.paidAt;
   if (stepKey === 'issued') return application.issuedAt;
   return application.status === 'paid' || application.status === 'issued'

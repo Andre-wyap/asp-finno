@@ -27,17 +27,21 @@ function formatDate(ts: unknown, includeTime = false) {
 }
 
 const STATUS_LABELS: Record<string, string> = {
-  lead: 'Lead',
+  applied: 'Applied',
+  lead: 'Applied',
   paid: 'Paid',
   payment_failed: 'Payment Failed',
-  issued: 'Issued'
+  issued: 'Issued',
+  drop: 'Drop'
 };
 
 const STATUS_COLORS: Record<string, string> = {
+  applied: 'bg-amber-50 text-amber-700 ring-amber-200',
   lead: 'bg-amber-50 text-amber-700 ring-amber-200',
   paid: 'bg-blue-50 text-blue-700 ring-blue-200',
   payment_failed: 'bg-red-50 text-red-700 ring-red-200',
-  issued: 'bg-green-50 text-green-700 ring-green-200'
+  issued: 'bg-green-50 text-green-700 ring-green-200',
+  drop: 'bg-gray-100 text-gray-700 ring-gray-200'
 };
 
 const EVENT_ICONS: Record<string, string> = {

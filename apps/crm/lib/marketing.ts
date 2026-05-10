@@ -9,7 +9,7 @@ export type MarketingFilters = {
   dateTo?: string;
 };
 
-const VALID_STATUSES = ['lead', 'paid', 'payment_failed', 'issued'];
+const VALID_STATUSES = ['applied', 'lead', 'paid', 'payment_failed', 'issued', 'drop'];
 const VALID_CATEGORIES = ['A', 'B'];
 
 export async function buildRecipientQuery(db: Firestore, filters: MarketingFilters) {
@@ -20,7 +20,7 @@ export async function buildRecipientQuery(db: Firestore, filters: MarketingFilte
   if (filters.paid === 'paid') {
     q = q.where('status', 'in', ['paid', 'issued']);
   } else if (filters.paid === 'unpaid') {
-    q = q.where('status', 'in', ['lead', 'payment_failed']);
+    q = q.where('status', 'in', ['applied', 'lead', 'payment_failed']);
   } else if (statuses.length > 0 && statuses.length <= 10) {
     q = q.where('status', 'in', statuses);
   }

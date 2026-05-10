@@ -10,6 +10,15 @@ import {
 
 export const dynamic = 'force-dynamic';
 
+const STATUS_LABELS: Record<string, string> = {
+  applied: 'Application received',
+  lead: 'Application received',
+  paid: 'Payment received',
+  payment_failed: 'Payment failed',
+  issued: 'Policy issued',
+  drop: 'Application closed',
+};
+
 type PaymentResultSearchParams = Record<string, string | string[] | undefined>;
 
 function first(value: string | string[] | undefined) {
@@ -108,7 +117,7 @@ export default async function PaymentResultPage({
             />
             <ResultRow
               label="Current status"
-              value={application?.status ?? providerStatus}
+              value={STATUS_LABELS[application?.status ?? ''] ?? providerStatus}
             />
             <ResultRow label="Hash verification" value={hashVerified ? 'Verified' : 'Failed'} />
           </div>

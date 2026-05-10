@@ -81,7 +81,7 @@ Working tracker for Allianz Shield Plus. Spec lives in [Claude.md](./Claude.md);
 - [x] Configure Senang Pay dashboard URLs for production/live payment:
   - [x] Return URL → `https://asp.finnomalaysia.com/payment/result`
   - [x] Callback URL → `https://asp.finnomalaysia.com/api/checkout/callback`
-- [x] `POST /api/checkout/initiate` — generates `ASP-<yyyymmdd>-<random>` order ID, writes `lead` doc
+- [x] `POST /api/checkout/initiate` — generates `ASP-<yyyymmdd>-<random>` order ID, writes `applied` doc
 - [x] Senang Pay return URL handler (browser redirect) → `/payment/result`
 - [x] Senang Pay server-to-server callback (with hash verification) — idempotent
 - [x] Payment success page
@@ -94,7 +94,7 @@ Working tracker for Allianz Shield Plus. Spec lives in [Claude.md](./Claude.md);
 - [x] Implement the `applications/{orderId}` schema (including `pdpaConsent` and `searchKeys`) and the `events` subcollection per `Claude.md §Firestore Schema`
 - [x] Implement `nricHash = HMAC-SHA256(nric, NRIC_HASH_PEPPER)` in `@asp/shared`; never log plaintext NRIC
 - [x] Populate `searchKeys.nameLower` and `searchKeys.emailLower` on every application write so the CRM list view can do prefix queries
-- [x] Replace any in-memory store with Firestore writes on form submit (status `lead`)
+- [x] Replace any in-memory store with Firestore writes on form submit (status `applied`)
 - [x] Capture PDPA consent at form submit → `pdpaConsent: { accepted, at: serverTimestamp(), version: "v1" }`
 - [x] Senang Pay callback updates status to `paid` / `payment_failed` and writes an event row
 - [x] Generate per-application `trackerToken` (UUID v4) at lead creation
@@ -113,12 +113,13 @@ Working tracker for Allianz Shield Plus. Spec lives in [Claude.md](./Claude.md);
 - [x] Add `RESEND_API_KEY`, `RESEND_WEBHOOK_SECRET`, `RESEND_FROM_ADDRESS` to Secret Manager and grant access to both backends + functions
 - [x] Build `lib/email.ts` Resend client in `@asp/shared`
 - [x] Build central `onStatusChange(application, from, to)` hook — only place a status-driven email is triggered
-- [x] Wire `onStatusChange` into Senang Pay callback and CRM status mutation; lead reminder is handled by the scheduled function
+- [x] Wire `onStatusChange` into Senang Pay callback and CRM status mutation; application/payment reminder now sends immediately on submit, with scheduled fallback for unsent applied applications
 - [x] Build Resend webhook handler at `/api/webhooks/resend` (Svix signature verify) → write `email_event` rows
 - [ ] Configure the Resend webhook URL in the Resend dashboard:
   - [ ] Initially: `https://<web-backend-id>.web.app/api/webhooks/resend` (use the App Hosting auto-generated URL)
   - [ ] After Phase 9 domain bind: update to `https://asp.finnomalaysia.com/api/webhooks/resend`
-- [x] Cloud Scheduler job → `leadReminderTick` Cloud Function for stale `lead` docs (>24h, `reminderSent=false`)
+- [x] Cloud Scheduler job → `leadReminderTick` Cloud Function for stale `applied` docs (>24h, `reminderSent=false`)
+- [x] Add Senang Pay compatibility callback URL `/api/payment/callback` and return plain `OK` for successful callbacks
 
 ### Current Email Bugs To Fix Before Expanding CRM
 - [x] Fix deployed email runtime dependencies so automatic transactional emails can render/send from App Hosting
@@ -175,7 +176,7 @@ Working tracker for Allianz Shield Plus. Spec lives in [Claude.md](./Claude.md);
 - [x] Update Senang Pay return URL + callback URL in the Senang Pay merchant dashboard to the production hostnames
 - [ ] Verify the auto-deploy from Phase 1 still rolls out cleanly to both custom domains (no manual deploy step needed)
 - [ ] End-to-end test with a real Senang Pay production/live transaction
-- [ ] End-to-end test full journey: lead → reminder email → paid → issued → all four emails delivered + webhook events recorded
+- [ ] End-to-end test full journey: applied → reminder email → paid → issued → all four emails delivered + webhook events recorded
 
 ## Phase 10: CRM Growth Features
 
@@ -190,23 +191,24 @@ Working tracker for Allianz Shield Plus. Spec lives in [Claude.md](./Claude.md);
 - [x] Let admins manually change lead/application status from CRM beyond only `paid → issued`
 - [x] Every manual status change writes an `events` subcollection row, visible in Event timeline like notes
 - [x] Require optional admin note/reason for manual status changes
-- [x] Decide whether manual status changes should trigger transactional emails by default, require a checkbox, or never auto-send (decision: checkbox, default on for transitions that have a template; no email for `* → lead`)
+- [x] Decide whether manual status changes should trigger transactional emails by default, require a checkbox, or never auto-send (decision: checkbox, default on for transitions that have a template; no email for `* → applied` or `* → drop`)
+- [x] Add `drop` status for clients who are not interested
 - [x] Add guardrails so manual payment status changes cannot accidentally duplicate payment callback events (status_change events from manual changes are tagged `manual: true` and use a separate doc id; payment_callback events stay keyed by `payment_callback_<txn>`)
 
 ### Payment Follow-Up Email
 - [ ] Create/repair "complete your payment" email template with live `/payment/retry/{trackerToken}` link
-- [ ] Add CRM button to send payment follow-up email for `lead` / `payment_failed` applications
+- [ ] Add CRM button to send payment follow-up email for `applied` / `payment_failed` applications
 - [ ] Include this send in Event timeline as `email_sent`
 - [ ] Prevent sending payment follow-up to already `paid` or `issued` applications
 
 ### Email Policy Progress
 - [ ] Add policy/application progress section to every transactional email
-- [ ] Ensure progress reflects statuses: `lead`, `payment_failed`, `paid`, `issued`
+- [ ] Ensure progress reflects statuses: `applied`, `payment_failed`, `paid`, `issued`, `drop`
 - [ ] Include tracker link in every progress section
 
 ### Bulk Email Marketing
 - [x] Build Email Marketing tab in CRM
-- [x] Segment recipients by application status (`lead`, `payment_failed`, `paid`, `issued`)
+- [x] Segment recipients by application status (`applied`, `payment_failed`, `paid`, `issued`, `drop`)
 - [x] Add filters/search before send: plan, date range, occupation category, paid/unpaid status
 - [x] Add recipient preview and final confirmation before sending (typed `SEND <count>` confirm phrase + recipient-count check on send)
 - [x] Add unsubscribe/marketing consent strategy before sending non-transactional email (recipients with `marketingUnsubscribed: true` are filtered server-side; opt-out flag added to schema)

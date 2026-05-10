@@ -24,7 +24,7 @@ export const healthCheck = onRequest(
   }
 );
 
-// Runs hourly — finds leads older than 24h with reminderSent=false and sends reminder email
+// Runs hourly — finds applied applications older than 24h with reminderSent=false and sends reminder email
 export const leadReminderTick = onSchedule(
   {
     region: 'asia-southeast1',
@@ -38,25 +38,35 @@ export const leadReminderTick = onSchedule(
     const db = getDb();
     const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
-    const query = db
-      .collection('applications')
-      .where('status', '==', 'lead')
-      .where('reminderSent', '==', false)
-      .where('createdAt', '<', cutoff)
-      .orderBy('createdAt', 'asc')
-      .limit(100);
+    const [appliedSnapshot, legacyLeadSnapshot] = await Promise.all([
+      db
+        .collection('applications')
+        .where('status', '==', 'applied')
+        .where('reminderSent', '==', false)
+        .where('createdAt', '<', cutoff)
+        .orderBy('createdAt', 'asc')
+        .limit(100)
+        .get(),
+      db
+        .collection('applications')
+        .where('status', '==', 'lead')
+        .where('reminderSent', '==', false)
+        .where('createdAt', '<', cutoff)
+        .orderBy('createdAt', 'asc')
+        .limit(100)
+        .get(),
+    ]);
+    const docs = [...appliedSnapshot.docs, ...legacyLeadSnapshot.docs].slice(0, 100);
 
-    const snapshot = await query.get();
-
-    if (snapshot.empty) {
-      console.log('leadReminderTick: no eligible leads');
+    if (docs.length === 0) {
+      console.log('leadReminderTick: no eligible applied applications');
       return;
     }
 
-    console.log(`leadReminderTick: processing ${snapshot.size} leads`);
+    console.log(`leadReminderTick: processing ${docs.length} applied applications`);
 
     const results = await Promise.allSettled(
-      snapshot.docs.map(async (doc) => {
+      docs.map(async (doc) => {
         const orderId = doc.id;
         const data = doc.data();
 
@@ -91,6 +101,6 @@ export const leadReminderTick = onSchedule(
       console.error(`leadReminderTick: ${failed.length} failures`, failed.map((f) => (f as PromiseRejectedResult).reason));
     }
 
-    console.log(`leadReminderTick: done. ${snapshot.size - failed.length} succeeded, ${failed.length} failed`);
+    console.log(`leadReminderTick: done. ${docs.length - failed.length} succeeded, ${failed.length} failed`);
   }
 );

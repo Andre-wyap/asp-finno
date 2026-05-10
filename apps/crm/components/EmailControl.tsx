@@ -7,7 +7,7 @@ import { Eye, RefreshCw, Send } from 'lucide-react';
 type TemplateKey = 'lead_reminder' | 'paid' | 'payment_failed' | 'issued';
 
 const TEMPLATES: { value: TemplateKey; label: string }[] = [
-  { value: 'lead_reminder', label: 'Lead reminder' },
+  { value: 'lead_reminder', label: 'Application/payment reminder' },
   { value: 'paid', label: 'Payment confirmed' },
   { value: 'payment_failed', label: 'Payment failed' },
   { value: 'issued', label: 'Policy issued' }

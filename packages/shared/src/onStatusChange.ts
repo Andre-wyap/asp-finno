@@ -157,8 +157,16 @@ export async function triggerLeadReminderEmail(params: {
   orderId: string;
   application: ApplicationSnapshot;
   writeEvent: (data: Record<string, unknown>) => Promise<void>;
+  actorId?: string;
+  triggeredBy?: string;
 }): Promise<EmailTriggerResult> {
-  const { orderId, application, writeEvent } = params;
+  const {
+    orderId,
+    application,
+    writeEvent,
+    actorId = 'lead-reminder-cron',
+    triggeredBy = 'lead_reminder_cron',
+  } = params;
   const tracker = trackerUrl(application.trackerToken);
   const payment = paymentUrl(application.trackerToken);
 
@@ -183,7 +191,7 @@ export async function triggerLeadReminderEmail(params: {
     if (result.error) {
       await writeEvent({
         type: 'email_send_failed',
-        actor: { kind: 'system', id: 'lead-reminder-cron' },
+        actor: { kind: 'system', id: actorId },
         payload: { template: 'lead_reminder', to: application.applicantEmail, subject, error: result.error },
       });
       console.error('lead_reminder_send_failed', { orderId, error: result.error });
@@ -192,13 +200,13 @@ export async function triggerLeadReminderEmail(params: {
 
     await writeEvent({
       type: 'email_sent',
-      actor: { kind: 'system', id: 'lead-reminder-cron' },
+      actor: { kind: 'system', id: actorId },
       payload: {
         template: 'lead_reminder',
         resendMessageId: result.messageId,
         to: application.applicantEmail,
         subject,
-        triggeredBy: 'lead_reminder_cron',
+        triggeredBy,
       },
     });
     return { ok: true, messageId: result.messageId };
@@ -207,7 +215,7 @@ export async function triggerLeadReminderEmail(params: {
     console.error('lead_reminder_exception', { orderId, err });
     await writeEvent({
       type: 'email_send_failed',
-      actor: { kind: 'system', id: 'lead-reminder-cron' },
+      actor: { kind: 'system', id: actorId },
       payload: {
         template: 'lead_reminder',
         to: application.applicantEmail,

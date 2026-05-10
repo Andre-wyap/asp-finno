@@ -8,17 +8,21 @@ import { getDb } from '../../lib/firebaseAdmin';
 const PAGE_SIZE = 20;
 
 const STATUS_LABELS: Record<string, string> = {
-  lead: 'Lead',
+  applied: 'Applied',
+  lead: 'Applied',
   paid: 'Paid',
   payment_failed: 'Payment Failed',
-  issued: 'Issued'
+  issued: 'Issued',
+  drop: 'Drop'
 };
 
 const STATUS_COLORS: Record<string, string> = {
+  applied: 'bg-amber-50 text-amber-700',
   lead: 'bg-amber-50 text-amber-700',
   paid: 'bg-blue-50 text-blue-700',
   payment_failed: 'bg-red-50 text-red-700',
-  issued: 'bg-green-50 text-green-700'
+  issued: 'bg-green-50 text-green-700',
+  drop: 'bg-gray-100 text-gray-700'
 };
 
 function formatDate(ts: unknown) {

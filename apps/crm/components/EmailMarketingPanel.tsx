@@ -4,10 +4,11 @@ import { useState } from 'react';
 import { Eye, Send, AlertCircle } from 'lucide-react';
 
 const STATUSES = [
-  { value: 'lead', label: 'Lead' },
+  { value: 'applied', label: 'Applied' },
   { value: 'paid', label: 'Paid' },
   { value: 'payment_failed', label: 'Payment Failed' },
-  { value: 'issued', label: 'Issued' }
+  { value: 'issued', label: 'Issued' },
+  { value: 'drop', label: 'Drop' }
 ];
 
 const CATEGORIES = [
@@ -221,7 +222,7 @@ export function EmailMarketingPanel({
               >
                 <option value="all">All</option>
                 <option value="paid">Paid (paid + issued)</option>
-                <option value="unpaid">Unpaid (lead + payment_failed)</option>
+                <option value="unpaid">Unpaid (applied + payment_failed)</option>
               </select>
             </div>
             <div>

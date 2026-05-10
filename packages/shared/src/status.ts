@@ -1,17 +1,21 @@
 export const APPLICATION_STATUSES = [
+  'applied',
   'lead',
   'paid',
   'payment_failed',
-  'issued'
+  'issued',
+  'drop'
 ] as const;
 
 export type ApplicationStatus = (typeof APPLICATION_STATUSES)[number];
 
 export const STATUS_TRANSITIONS: Record<ApplicationStatus, ApplicationStatus[]> = {
+  applied: ['paid', 'payment_failed', 'drop'],
   lead: ['paid', 'payment_failed'],
-  paid: ['issued'],
-  payment_failed: ['lead'],
-  issued: []
+  paid: ['issued', 'drop'],
+  payment_failed: ['applied', 'drop'],
+  issued: ['drop'],
+  drop: ['applied']
 };
 
 export function canTransitionStatus(from: ApplicationStatus, to: ApplicationStatus) {

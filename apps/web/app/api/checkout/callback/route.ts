@@ -15,6 +15,13 @@ function jsonError(message: string, status = 400) {
   return NextResponse.json({ error: message }, { status });
 }
 
+function senangPayOk() {
+  return new NextResponse('OK', {
+    status: 200,
+    headers: { 'content-type': 'text/plain; charset=utf-8' }
+  });
+}
+
 function eventIdFor(params: SenangPayReturnParams) {
   const raw = `${params.transactionId || 'no-txn'}_${params.statusId}_${params.orderId}`;
   return `payment_callback_${raw.replace(/[^A-Za-z0-9_-]/g, '_')}`;
@@ -154,36 +161,38 @@ async function handleCallback(request: Request) {
   // Trigger email after transaction commits (non-blocking, errors are logged/stored)
   if (statusChanged && nextStatus && applicationData) {
     const eventsCol = applicationRef.collection('events');
-    triggerStatusEmail({
-      orderId: params.orderId,
-      application: {
-        applicantName: applicationData.applicant?.name ?? '',
-        applicantEmail: applicationData.applicant?.email ?? '',
-        planName: applicationData.plan?.code ?? '',
-        planCode: applicationData.plan?.code ?? '',
-        premiumAmount: applicationData.premium?.amount ?? 0,
-        premiumCurrency: applicationData.premium?.currency ?? 'MYR',
-        trackerToken: applicationData.trackerToken ?? '',
-        failureMessage: params.message || undefined,
-        paidAt: nextStatus === 'paid' ? new Date().toLocaleDateString('en-MY', { year: 'numeric', month: 'long', day: 'numeric' }) : undefined,
-      },
-      from: (applicationData.status as ApplicationStatus) ?? null,
-      to: nextStatus as ApplicationStatus,
-      writeEvent: (data) => eventsCol.add({ ...data, at: FieldValue.serverTimestamp() }).then(() => undefined),
-    })
-      .then((result) => {
-        if (!result.ok) {
-          console.error('triggerStatusEmail_failed', {
-            orderId: params.orderId,
-            to: nextStatus,
-            error: result.error,
-          });
-        }
-      })
-      .catch((err: unknown) => console.error('triggerStatusEmail_failed', err));
+    try {
+      const result = await triggerStatusEmail({
+        orderId: params.orderId,
+        application: {
+          applicantName: applicationData.applicant?.name ?? '',
+          applicantEmail: applicationData.applicant?.email ?? '',
+          planName: applicationData.plan?.code ?? '',
+          planCode: applicationData.plan?.code ?? '',
+          premiumAmount: applicationData.premium?.amount ?? 0,
+          premiumCurrency: applicationData.premium?.currency ?? 'MYR',
+          trackerToken: applicationData.trackerToken ?? '',
+          failureMessage: params.message || undefined,
+          paidAt: nextStatus === 'paid' ? new Date().toLocaleDateString('en-MY', { year: 'numeric', month: 'long', day: 'numeric' }) : undefined,
+        },
+        from: (applicationData.status as ApplicationStatus) ?? null,
+        to: nextStatus as ApplicationStatus,
+        writeEvent: (data) => eventsCol.add({ ...data, at: FieldValue.serverTimestamp() }).then(() => undefined),
+      });
+
+      if (!result.ok) {
+        console.error('triggerStatusEmail_failed', {
+          orderId: params.orderId,
+          to: nextStatus,
+          error: result.error,
+        });
+      }
+    } catch (err) {
+      console.error('triggerStatusEmail_failed', { orderId: params.orderId, to: nextStatus, err });
+    }
   }
 
-  return NextResponse.json({ ok: true, orderId: params.orderId, status: providerStatus });
+  return senangPayOk();
 }
 
 export async function POST(request: Request) {

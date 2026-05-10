@@ -5,10 +5,11 @@ import { useState } from 'react';
 import { CheckCircle } from 'lucide-react';
 
 const ALL_STATUSES: { value: string; label: string; sendsEmail: boolean }[] = [
-  { value: 'lead', label: 'Lead', sendsEmail: false },
+  { value: 'applied', label: 'Applied', sendsEmail: false },
   { value: 'paid', label: 'Paid', sendsEmail: true },
   { value: 'payment_failed', label: 'Payment Failed', sendsEmail: true },
-  { value: 'issued', label: 'Issued', sendsEmail: true }
+  { value: 'issued', label: 'Issued', sendsEmail: true },
+  { value: 'drop', label: 'Drop', sendsEmail: false }
 ];
 
 export function StatusActions({

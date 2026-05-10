@@ -55,7 +55,7 @@ export async function POST(
   }
 
   const note = body.note?.trim() ?? '';
-  const sendEmail = body.sendEmail !== false; // default true; only payment_failed → lead default false handled by client
+  const sendEmail = body.sendEmail !== false;
   const now = FieldValue.serverTimestamp();
   const policyNumber = body.policyNumber?.trim();
   const updates: Record<string, unknown> = {

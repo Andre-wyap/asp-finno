@@ -54,7 +54,7 @@ export async function GET(
   const application = applicationDoc.data();
   const status = application.status;
 
-  if (status !== 'lead' && status !== 'payment_failed') {
+  if (status !== 'applied' && status !== 'lead' && status !== 'payment_failed') {
     return trackerRedirect(token);
   }
 
