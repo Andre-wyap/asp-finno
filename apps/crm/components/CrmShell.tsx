@@ -3,9 +3,13 @@
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutList, LogOut } from 'lucide-react';
+import { LayoutList, LogOut, Mail, Tag } from 'lucide-react';
 
-const navItems = [{ href: '/applications', label: 'Applications', icon: LayoutList }];
+const navItems = [
+  { href: '/applications', label: 'Applicants', icon: LayoutList },
+  { href: '/email-marketing', label: 'Email Marketing', icon: Mail },
+  { href: '/promo-codes', label: 'Promo Codes', icon: Tag }
+];
 
 export function CrmShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();

@@ -5,6 +5,11 @@ import { getAnnualPremium, plans, type AgeBand, type OccupationCategory } from '
 import { normalizeMobile, validateMobile } from '@asp/shared/mobile';
 import { parseNric, validateNric } from '@asp/shared/nric';
 import { hashNric } from '@asp/shared/nricHash';
+import {
+  normalizePromoCode,
+  validatePromoForUse,
+  type PromoCode
+} from '@asp/shared/promo';
 import { getDb } from '../../../../lib/firebaseAdmin';
 import { generateOrderId } from '../../../../lib/orders';
 import {
@@ -41,6 +46,7 @@ type CheckoutPayload = {
     accepted?: boolean;
     version?: string;
   };
+  promoCode?: string;
 };
 
 const VALID_AGE_BANDS: AgeBand[] = ['age_50_and_below', 'age_51_to_65'];
@@ -230,7 +236,37 @@ export async function POST(request: Request) {
     const orderId = generateOrderId();
     const sst = Math.round(validated.premium * 0.08);
     const stampDuty = 10;
-    const totalPayable = validated.premium + sst + stampDuty;
+    const subtotal = validated.premium + sst + stampDuty;
+
+    let appliedPromo: {
+      code: string;
+      discountType: 'percent' | 'fixed';
+      value: number;
+      discountAmount: number;
+    } | null = null;
+    const submittedCode = normalizePromoCode(payload.promoCode ?? '');
+    if (submittedCode) {
+      const promoDoc = await db.collection('promoCodes').doc(submittedCode).get();
+      const promo = promoDoc.exists
+        ? ({ ...(promoDoc.data() as object), code: submittedCode } as PromoCode)
+        : null;
+      const result = validatePromoForUse(promo, {
+        planCode: validated.plan.code,
+        occupationCategory: payload.plan!.occupationCategory!,
+        baseAmount: subtotal
+      });
+      if (!result.ok) {
+        return jsonError(result.reason, 422);
+      }
+      appliedPromo = {
+        code: result.code,
+        discountType: result.discountType,
+        value: result.value,
+        discountAmount: result.discountAmount
+      };
+    }
+
+    const totalPayable = Math.max(0, subtotal - (appliedPromo?.discountAmount ?? 0));
     const amount = formatAmount(totalPayable);
     const detail = sanitizeDetail(`Allianz_Shield_Plus_${validated.plan.name}_${orderId}`);
     const hash = generatePaymentHash({ secret, detail, amount, orderId });
@@ -267,8 +303,11 @@ export async function POST(request: Request) {
         baseAnnualPremium: validated.premium,
         serviceTax: sst,
         stampDuty,
+        subtotal,
+        discountAmount: appliedPromo?.discountAmount ?? 0,
         currency: 'MYR'
       },
+      promo: appliedPromo,
       pdpaConsent: {
         accepted: true,
         at: FieldValue.serverTimestamp(),

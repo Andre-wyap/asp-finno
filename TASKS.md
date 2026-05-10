@@ -169,8 +169,8 @@ Working tracker for Allianz Shield Plus. Spec lives in [Claude.md](./Claude.md);
 - [ ] Bind custom domains in Firebase:
   - [x] `asp.finnomalaysia.com` → `web` backend
   - [ ] `aspadmin.finnomalaysia.com` → `crm` backend
-- [ ] Add the two CNAME records at the `finnomalaysia.com` DNS provider (set DNS-only / grey cloud if Cloudflare-fronted)
-- [ ] Update Resend webhook URL to `https://asp.finnomalaysia.com/api/webhooks/resend`
+- [x] Add the two CNAME records at the `finnomalaysia.com` DNS provider (set DNS-only / grey cloud if Cloudflare-fronted)
+- [x] Update Resend webhook URL to `https://asp.finnomalaysia.com/api/webhooks/resend`
 - [x] Update `TRACKER_BASE_URL` secret to `https://asp.finnomalaysia.com`
 - [x] Update Senang Pay return URL + callback URL in the Senang Pay merchant dashboard to the production hostnames
 - [ ] Verify the auto-deploy from Phase 1 still rolls out cleanly to both custom domains (no manual deploy step needed)
@@ -180,18 +180,18 @@ Working tracker for Allianz Shield Plus. Spec lives in [Claude.md](./Claude.md);
 ## Phase 10: CRM Growth Features
 
 ### CRM Navigation
-- [ ] Restructure CRM into 3 top-level tabs:
-  - [ ] Applicants
-  - [ ] Email Marketing
-  - [ ] Promo Codes
-- [ ] Keep existing applicant list/detail flow under Applicants
+- [x] Restructure CRM into 3 top-level tabs:
+  - [x] Applicants
+  - [x] Email Marketing
+  - [x] Promo Codes
+- [x] Keep existing applicant list/detail flow under Applicants
 
 ### Manual Status Management
-- [ ] Let admins manually change lead/application status from CRM beyond only `paid → issued`
-- [ ] Every manual status change writes an `events` subcollection row, visible in Event timeline like notes
-- [ ] Require optional admin note/reason for manual status changes
-- [ ] Decide whether manual status changes should trigger transactional emails by default, require a checkbox, or never auto-send
-- [ ] Add guardrails so manual payment status changes cannot accidentally duplicate payment callback events
+- [x] Let admins manually change lead/application status from CRM beyond only `paid → issued`
+- [x] Every manual status change writes an `events` subcollection row, visible in Event timeline like notes
+- [x] Require optional admin note/reason for manual status changes
+- [x] Decide whether manual status changes should trigger transactional emails by default, require a checkbox, or never auto-send (decision: checkbox, default on for transitions that have a template; no email for `* → lead`)
+- [x] Add guardrails so manual payment status changes cannot accidentally duplicate payment callback events (status_change events from manual changes are tagged `manual: true` and use a separate doc id; payment_callback events stay keyed by `payment_callback_<txn>`)
 
 ### Payment Follow-Up Email
 - [ ] Create/repair "complete your payment" email template with live `/payment/retry/{trackerToken}` link
@@ -205,21 +205,21 @@ Working tracker for Allianz Shield Plus. Spec lives in [Claude.md](./Claude.md);
 - [ ] Include tracker link in every progress section
 
 ### Bulk Email Marketing
-- [ ] Build Email Marketing tab in CRM
-- [ ] Segment recipients by application status (`lead`, `payment_failed`, `paid`, `issued`)
-- [ ] Add filters/search before send: plan, date range, occupation category, paid/unpaid status
-- [ ] Add recipient preview and final confirmation before sending
-- [ ] Add unsubscribe/marketing consent strategy before sending non-transactional email
-- [ ] Add rate limiting / batch sending to avoid Resend throttling
-- [ ] Write bulk campaign docs and per-recipient send events for auditability
-- [ ] Separate transactional emails from marketing emails in code and event naming
+- [x] Build Email Marketing tab in CRM
+- [x] Segment recipients by application status (`lead`, `payment_failed`, `paid`, `issued`)
+- [x] Add filters/search before send: plan, date range, occupation category, paid/unpaid status
+- [x] Add recipient preview and final confirmation before sending (typed `SEND <count>` confirm phrase + recipient-count check on send)
+- [x] Add unsubscribe/marketing consent strategy before sending non-transactional email (recipients with `marketingUnsubscribed: true` are filtered server-side; opt-out flag added to schema)
+- [x] Add rate limiting / batch sending to avoid Resend throttling (200ms throttle between sends, ~5/s; 30s per-admin campaign rate limit; 500-recipient cap per campaign)
+- [x] Write bulk campaign docs and per-recipient send events for auditability (each campaign saved to `marketingCampaigns/{id}` with filters, recipient count, sent/failed totals; per-recipient `marketing_email_sent` / `marketing_email_failed` events)
+- [x] Separate transactional emails from marketing emails in code and event naming (`marketing_email_*` events distinct from `email_sent`)
 
 ### Promo Codes
-- [ ] Add Promo Codes CRM tab
-- [ ] Create Firestore promo code schema: code, discount type, amount/percent, active dates, usage limit, allowed plans/categories, created/updated metadata
-- [ ] Build CRM create/edit/deactivate promo code UI
-- [ ] Add promo code input to web application/payment flow
-- [ ] Validate promo codes server-side in checkout initiation
-- [ ] Store applied promo code and discount amount on application/payment record
-- [ ] Show discount in order summary, checkout payload, CRM detail, and payment amount calculation
-- [ ] Add guardrails for expired/disabled/usage-limited promo codes
+- [x] Add Promo Codes CRM tab
+- [x] Create Firestore promo code schema: code, discount type, amount/percent, active dates, usage limit, allowed plans/categories, created/updated metadata
+- [x] Build CRM create/edit/deactivate promo code UI
+- [x] Add promo code input to web application/payment flow
+- [x] Validate promo codes server-side in checkout initiation (re-validates on submit, not just on the apply button — defends against client tampering)
+- [x] Store applied promo code and discount amount on application/payment record
+- [x] Show discount in order summary, checkout payload, CRM detail, and payment amount calculation
+- [x] Add guardrails for expired/disabled/usage-limited promo codes (shared `validatePromoForUse` helper; `usageCount` increments on `paid` callback)

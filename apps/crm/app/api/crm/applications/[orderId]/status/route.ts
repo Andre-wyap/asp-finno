@@ -1,6 +1,6 @@
 import { FieldValue } from 'firebase-admin/firestore';
 import { NextResponse } from 'next/server';
-import { canTransitionStatus, type ApplicationStatus } from '@asp/shared/status';
+import { APPLICATION_STATUSES, type ApplicationStatus } from '@asp/shared/status';
 import { triggerStatusEmail } from '@asp/shared/onStatusChange';
 import { authError, verifyAdmin } from '../../../../../../lib/auth';
 import { getDb } from '../../../../../../lib/firebaseAdmin';
@@ -18,15 +18,20 @@ export async function POST(
 
   const { orderId } = await params;
 
-  let body: { to?: string; policyNumber?: string };
+  let body: { to?: string; policyNumber?: string; note?: string; sendEmail?: boolean };
   try {
-    body = (await request.json()) as { to?: string; policyNumber?: string };
+    body = (await request.json()) as {
+      to?: string;
+      policyNumber?: string;
+      note?: string;
+      sendEmail?: boolean;
+    };
   } catch {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
   }
 
   const to = body.to as ApplicationStatus | undefined;
-  if (!to) {
+  if (!to || !APPLICATION_STATUSES.includes(to)) {
     return NextResponse.json({ error: '"to" status is required' }, { status: 400 });
   }
 
@@ -41,17 +46,16 @@ export async function POST(
   const appData = appDoc.data()!;
   const current = appData.status as ApplicationStatus;
 
-  if (!canTransitionStatus(current, to)) {
-    return NextResponse.json(
-      { error: `Cannot transition from "${current}" to "${to}"` },
-      { status: 422 }
-    );
+  if (current === to) {
+    return NextResponse.json({ error: `Application is already "${to}"` }, { status: 422 });
   }
 
   if (to === 'issued' && !body.policyNumber?.trim()) {
     return NextResponse.json({ error: 'policyNumber is required when issuing' }, { status: 400 });
   }
 
+  const note = body.note?.trim() ?? '';
+  const sendEmail = body.sendEmail !== false; // default true; only payment_failed → lead default false handled by client
   const now = FieldValue.serverTimestamp();
   const policyNumber = body.policyNumber?.trim();
   const updates: Record<string, unknown> = {
@@ -65,6 +69,10 @@ export async function POST(
     updates.issuedAt = now;
   }
 
+  if (to === 'paid' && !appData.paidAt) {
+    updates.paidAt = now;
+  }
+
   await appRef.update(updates);
 
   await appRef.collection('events').add({
@@ -72,33 +80,53 @@ export async function POST(
     from: current,
     to,
     actor: { kind: 'admin', id: admin.uid },
-    payload: to === 'issued' ? { policyNumber } : {},
+    payload: {
+      manual: true,
+      note: note || null,
+      ...(to === 'issued' && policyNumber ? { policyNumber } : {})
+    },
     at: now
   });
 
-  // Fire email (non-blocking — status change already committed)
-  const eventsCol = appRef.collection('events');
-  triggerStatusEmail({
-    orderId,
-    application: {
-      applicantName: appData.applicant?.name ?? '',
-      applicantEmail: appData.applicant?.email ?? '',
-      planName: appData.plan?.code ?? '',
-      planCode: appData.plan?.code ?? '',
-      premiumAmount: appData.premium?.amount ?? 0,
-      premiumCurrency: appData.premium?.currency ?? 'MYR',
-      trackerToken: appData.trackerToken ?? '',
-      policyNumber,
-      issuedAt: new Date().toLocaleDateString('en-MY', { year: 'numeric', month: 'long', day: 'numeric' }),
-    },
-    from: current,
-    to,
-    writeEvent: (data) => eventsCol.add({ ...data, at: FieldValue.serverTimestamp() }).then(() => undefined),
-  })
-    .then((result) => {
-      if (!result.ok) console.error('triggerStatusEmail_failed', { orderId, to, error: result.error });
+  if (note) {
+    await appRef.collection('events').add({
+      type: 'note',
+      actor: { kind: 'admin', id: admin.uid },
+      payload: { note, context: `manual_status_change:${current}->${to}` },
+      at: now
+    });
+  }
+
+  if (sendEmail && (to === 'paid' || to === 'payment_failed' || to === 'issued')) {
+    const eventsCol = appRef.collection('events');
+    triggerStatusEmail({
+      orderId,
+      application: {
+        applicantName: appData.applicant?.name ?? '',
+        applicantEmail: appData.applicant?.email ?? '',
+        planName: appData.plan?.code ?? '',
+        planCode: appData.plan?.code ?? '',
+        premiumAmount: appData.premium?.amount ?? 0,
+        premiumCurrency: appData.premium?.currency ?? 'MYR',
+        trackerToken: appData.trackerToken ?? '',
+        policyNumber,
+        issuedAt: new Date().toLocaleDateString('en-MY', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        })
+      },
+      from: current,
+      to,
+      writeEvent: (data) =>
+        eventsCol.add({ ...data, at: FieldValue.serverTimestamp() }).then(() => undefined)
     })
-    .catch((err: unknown) => console.error('triggerStatusEmail_failed', err));
+      .then((result) => {
+        if (!result.ok)
+          console.error('triggerStatusEmail_failed', { orderId, to, error: result.error });
+      })
+      .catch((err: unknown) => console.error('triggerStatusEmail_failed', err));
+  }
 
   return NextResponse.json({ ok: true });
 }

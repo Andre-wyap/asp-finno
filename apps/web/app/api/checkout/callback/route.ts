@@ -142,6 +142,15 @@ async function handleCallback(request: Request) {
     }
   });
 
+  // Increment promo usage on successful payment (best-effort)
+  if (statusChanged && nextStatus === 'paid' && applicationData?.promo?.code) {
+    const promoCode = applicationData.promo.code as string;
+    db.collection('promoCodes')
+      .doc(promoCode)
+      .update({ usageCount: FieldValue.increment(1) })
+      .catch((err: unknown) => console.error('promo_usage_increment_failed', { promoCode, err }));
+  }
+
   // Trigger email after transaction commits (non-blocking, errors are logged/stored)
   if (statusChanged && nextStatus && applicationData) {
     const eventsCol = applicationRef.collection('events');

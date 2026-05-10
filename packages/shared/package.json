@@ -9,6 +9,7 @@
     "./mobile": "./src/mobile.ts",
     "./nric": "./src/nric.ts",
     "./status": "./src/status.ts",
+    "./promo": "./src/promo.ts",
     "./email": "./src/email.ts",
     "./onStatusChange": "./src/onStatusChange.ts",
     "./emails/LeadReminder": "./emails/LeadReminder.tsx",

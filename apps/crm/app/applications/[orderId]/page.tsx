@@ -168,6 +168,15 @@ export default async function ApplicationDetailPage({ params }: { params: PagePa
               />
               <Row label="SST (8%)" value={formatCurrency(premium.serviceTax)} />
               <Row label="Stamp duty" value={formatCurrency(premium.stampDuty)} />
+              {typeof premium.subtotal === 'number' && (
+                <Row label="Subtotal" value={formatCurrency(premium.subtotal)} />
+              )}
+              {typeof premium.discountAmount === 'number' && premium.discountAmount > 0 && (
+                <Row
+                  label={`Promo discount${(app.promo as { code?: string } | undefined)?.code ? ` (${(app.promo as { code: string }).code})` : ''}`}
+                  value={`− ${formatCurrency(premium.discountAmount)}`}
+                />
+              )}
               <Row label="Total payable" value={formatCurrency(premium.amount)} />
               {typeof app.policyNumber === 'string' && app.policyNumber && (
                 <Row label="Policy number" value={app.policyNumber} />

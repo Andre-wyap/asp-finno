@@ -274,20 +274,80 @@ function StepIndicator({ currentStep }: { currentStep: number }) {
 // OrderSummary sidebar
 // ---------------------------------------------------------------------------
 
+type AppliedPromo = {
+  code: string;
+  discountType: 'percent' | 'fixed';
+  value: number;
+  discountAmount: number;
+};
+
 function OrderSummary({
   plan,
   ageBand,
   occupationCategory,
   premium,
+  appliedPromo,
+  onApplyPromo,
+  onRemovePromo,
 }: {
   plan: Plan;
   ageBand: AgeBand;
   occupationCategory: OccupationCategory;
   premium: number;
+  appliedPromo: AppliedPromo | null;
+  onApplyPromo: (promo: AppliedPromo) => void;
+  onRemovePromo: () => void;
 }) {
   const sst = Math.round(premium * 0.08);
   const stampDuty = 10;
-  const total = premium + sst + stampDuty;
+  const subtotal = premium + sst + stampDuty;
+  const total = Math.max(0, subtotal - (appliedPromo?.discountAmount ?? 0));
+
+  const [code, setCode] = useState('');
+  const [validating, setValidating] = useState(false);
+  const [error, setError] = useState('');
+
+  async function applyPromo() {
+    const trimmed = code.trim().toUpperCase();
+    if (!trimmed) return;
+    setValidating(true);
+    setError('');
+    try {
+      const response = await fetch('/api/promo/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code: trimmed,
+          planCode: plan.code,
+          ageBand,
+          occupationCategory,
+        }),
+      });
+      const data = (await response.json().catch(() => ({}))) as {
+        ok?: boolean;
+        error?: string;
+        code?: string;
+        discountType?: 'percent' | 'fixed';
+        value?: number;
+        discountAmount?: number;
+      };
+      if (!response.ok || !data.ok) {
+        setError(data.error ?? 'Invalid promo code');
+        return;
+      }
+      onApplyPromo({
+        code: data.code!,
+        discountType: data.discountType!,
+        value: data.value!,
+        discountAmount: data.discountAmount ?? 0,
+      });
+      setCode('');
+    } catch {
+      setError('Network error.');
+    } finally {
+      setValidating(false);
+    }
+  }
 
   return (
     <div className="rounded-lg bg-surface-container-lowest p-6 shadow-ambient">
@@ -307,6 +367,58 @@ function OrderSummary({
         <SummaryRow label="Annual Premium" value={fmt(premium)} />
         <SummaryRow label="8% Service Tax" value={fmt(sst)} />
         <SummaryRow label="Stamp Duty" value={`RM ${stampDuty}`} />
+        {appliedPromo && (
+          <SummaryRow
+            label={`Promo (${appliedPromo.code})`}
+            value={`− ${fmt(appliedPromo.discountAmount)}`}
+          />
+        )}
+      </div>
+
+      {/* Promo code input */}
+      <div className="mt-4">
+        {appliedPromo ? (
+          <div className="flex items-center justify-between rounded-lg bg-green-50 px-3 py-2 text-xs">
+            <span className="font-semibold text-green-700">
+              Promo {appliedPromo.code} applied
+            </span>
+            <button
+              type="button"
+              onClick={onRemovePromo}
+              className="text-xs font-semibold text-green-700 underline"
+            >
+              Remove
+            </button>
+          </div>
+        ) : (
+          <div>
+            <label htmlFor="promo-input" className="mb-1 block text-xs font-semibold text-on-surface-variant">
+              Promo code
+            </label>
+            <div className="flex gap-2">
+              <input
+                id="promo-input"
+                type="text"
+                value={code}
+                onChange={(e) => {
+                  setCode(e.target.value.toUpperCase());
+                  setError('');
+                }}
+                placeholder="WELCOME10"
+                className="flex-1 rounded-lg bg-surface-container-low px-3 py-2 font-mono text-sm text-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
+              />
+              <button
+                type="button"
+                onClick={applyPromo}
+                disabled={validating || !code.trim()}
+                className="rounded-full bg-primary px-3 py-2 text-xs font-semibold text-on-primary hover:bg-secondary disabled:opacity-60"
+              >
+                {validating ? '…' : 'Apply'}
+              </button>
+            </div>
+            {error && <p className="mt-1 text-xs font-semibold text-red-600">{error}</p>}
+          </div>
+        )}
       </div>
 
       <div className="mt-4 rounded-lg bg-primary/5 px-4 py-3">
@@ -371,6 +483,7 @@ export function ApplicationForm({ plan, ageBand, occupationCategory, premium }: 
   const [pdpaError, setPdpaError] = useState('');
   const [submitError, setSubmitError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [appliedPromo, setAppliedPromo] = useState<AppliedPromo | null>(null);
 
   // ---- Applicant handlers ----
 
@@ -475,6 +588,7 @@ export function ApplicationForm({ plan, ageBand, occupationCategory, premium }: 
             accepted: pdpaConsent,
             version: 'v1',
           },
+          promoCode: appliedPromo?.code,
         }),
       });
 
@@ -911,6 +1025,9 @@ export function ApplicationForm({ plan, ageBand, occupationCategory, premium }: 
               ageBand={ageBand}
               occupationCategory={occupationCategory}
               premium={premium}
+              appliedPromo={appliedPromo}
+              onApplyPromo={setAppliedPromo}
+              onRemovePromo={() => setAppliedPromo(null)}
             />
           </aside>
         </div>
