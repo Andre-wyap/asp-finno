@@ -30,6 +30,12 @@ function formatDate(ts: unknown) {
   });
 }
 
+function timestampMs(ts: unknown) {
+  if (!ts || typeof ts !== 'object') return 0;
+  const timestamp = ts as { toDate?: () => Date; seconds?: number };
+  return timestamp.toDate?.().getTime() ?? (timestamp.seconds ? timestamp.seconds * 1000 : 0);
+}
+
 function summarizeEvent(event: Record<string, unknown>) {
   const payload = (event.payload as Record<string, unknown>) ?? {};
   const type = event.type as string;
@@ -55,15 +61,46 @@ export default async function ActivityPage() {
   }
 
   const db = getDb();
-  const snapshot = await db.collectionGroup('events').orderBy('at', 'desc').limit(100).get();
-  const events = snapshot.docs.map((doc) => {
-    const appRef = doc.ref.parent.parent;
-    return {
-      id: doc.id,
-      orderId: appRef?.id ?? '',
-      ...doc.data()
-    } as Record<string, unknown>;
-  });
+  let events: Record<string, unknown>[] = [];
+  let loadError: string | null = null;
+
+  try {
+    const appsSnapshot = await db.collection('applications').orderBy('updatedAt', 'desc').limit(50).get();
+    const eventSnapshots = await Promise.all(
+      appsSnapshot.docs.map(async (appDoc) => {
+        try {
+          const eventsSnapshot = await appDoc.ref
+            .collection('events')
+            .orderBy('at', 'desc')
+            .limit(10)
+            .get();
+
+          return eventsSnapshot.docs.map(
+            (eventDoc) =>
+              ({
+                id: eventDoc.id,
+                orderId: appDoc.id,
+                ...eventDoc.data()
+              }) as Record<string, unknown>
+          );
+        } catch (err) {
+          console.error('activity_events_load_failed', {
+            orderId: appDoc.id,
+            error: err instanceof Error ? err.message : String(err)
+          });
+          return [];
+        }
+      })
+    );
+
+    events = eventSnapshots
+      .flat()
+      .sort((a, b) => timestampMs(b.at) - timestampMs(a.at))
+      .slice(0, 100);
+  } catch (err) {
+    console.error('activity_log_load_failed', err);
+    loadError = 'Activity could not be loaded right now.';
+  }
 
   return (
     <CrmShell>
@@ -74,7 +111,9 @@ export default async function ActivityPage() {
         </div>
 
         <div className="mt-6 overflow-hidden rounded-lg bg-surface-container-lowest shadow-ambient">
-          {events.length === 0 ? (
+          {loadError ? (
+            <div className="px-6 py-16 text-center text-sm text-red-700">{loadError}</div>
+          ) : events.length === 0 ? (
             <div className="px-6 py-16 text-center text-sm text-on-surface-variant">
               No activity recorded.
             </div>
