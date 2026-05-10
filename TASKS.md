@@ -127,7 +127,8 @@ Working tracker for Allianz Shield Plus. Spec lives in [Claude.md](./Claude.md);
 - [x] CRM custom/free-form email sends successfully
 - [x] Confirm root cause: App Hosting standalone bundles were missing `@react-email/render` / `prettier` / shared email runtime deps
 - [x] Add safer JSON error responses + server logging around preview/resend/status-email routes
-- [ ] Deploy the email runtime fix to Firebase App Hosting and verify live preview/resend/auto-send
+- [x] Deploy the email runtime fix to Firebase App Hosting
+- [ ] Verify live CRM preview/resend and automatic status emails after rollout
 
 ## Phase 7: Customer Issuance Tracker
 - [x] Public route `/track/[token]` — looks up by `trackerToken`, returns sanitized status + timeline
