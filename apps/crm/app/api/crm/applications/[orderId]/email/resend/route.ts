@@ -4,6 +4,7 @@ import { authError, verifyAdmin } from '../../../../../../../lib/auth';
 import { getDb } from '../../../../../../../lib/firebaseAdmin';
 import { triggerStatusEmail, triggerLeadReminderEmail } from '@asp/shared/onStatusChange';
 import type { ApplicationStatus } from '@asp/shared/status';
+import { planNameFromCode } from '@asp/pricing';
 
 type TemplateKey = ApplicationStatus | 'lead_reminder';
 
@@ -57,7 +58,7 @@ export async function POST(
   const application = {
     applicantName: appData.applicant?.name ?? '',
     applicantEmail: appData.applicant?.email ?? '',
-    planName: appData.plan?.code ?? '',
+    planName: planNameFromCode(appData.plan?.code ?? ''),
     planCode: appData.plan?.code ?? '',
     premiumAmount: appData.premium?.amount ?? 0,
     premiumCurrency: appData.premium?.currency ?? 'MYR',

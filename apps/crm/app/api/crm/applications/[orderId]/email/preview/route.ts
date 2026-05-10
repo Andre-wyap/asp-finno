@@ -8,6 +8,7 @@ import { Paid } from '@asp/shared/emails/Paid';
 import { PaymentFailed } from '@asp/shared/emails/PaymentFailed';
 import { Issued } from '@asp/shared/emails/Issued';
 import type { ApplicationStatus } from '@asp/shared/status';
+import { planNameFromCode } from '@asp/pricing';
 
 type TemplateKey = ApplicationStatus | 'lead_reminder';
 
@@ -66,7 +67,7 @@ export async function POST(
       element = React.createElement(LeadReminder, {
         applicantName: overrides.applicantName ?? appData.applicant?.name ?? '',
         orderId,
-        planName: overrides.planName ?? appData.plan?.code ?? '',
+        planName: overrides.planName ?? planNameFromCode(appData.plan?.code ?? ''),
         premiumAmount: Number(overrides.premiumAmount ?? appData.premium?.amount ?? 0),
         premiumCurrency: appData.premium?.currency ?? 'MYR',
         paymentUrl: overrides.paymentUrl ?? retry,
@@ -78,7 +79,7 @@ export async function POST(
       element = React.createElement(Paid, {
         applicantName: overrides.applicantName ?? appData.applicant?.name ?? '',
         orderId,
-        planName: overrides.planName ?? appData.plan?.code ?? '',
+        planName: overrides.planName ?? planNameFromCode(appData.plan?.code ?? ''),
         premiumAmount: Number(overrides.premiumAmount ?? appData.premium?.amount ?? 0),
         premiumCurrency: appData.premium?.currency ?? 'MYR',
         paidAt: overrides.paidAt ?? (appData.paidAt?.toDate().toLocaleDateString('en-MY', { year: 'numeric', month: 'long', day: 'numeric' }) ?? new Date().toLocaleDateString()),
@@ -90,7 +91,7 @@ export async function POST(
       element = React.createElement(PaymentFailed, {
         applicantName: overrides.applicantName ?? appData.applicant?.name ?? '',
         orderId,
-        planName: overrides.planName ?? appData.plan?.code ?? '',
+        planName: overrides.planName ?? planNameFromCode(appData.plan?.code ?? ''),
         premiumAmount: Number(overrides.premiumAmount ?? appData.premium?.amount ?? 0),
         premiumCurrency: appData.premium?.currency ?? 'MYR',
         failureMessage: overrides.failureMessage ?? appData.payment?.lastMessage,
@@ -103,7 +104,7 @@ export async function POST(
       element = React.createElement(Issued, {
         applicantName: overrides.applicantName ?? appData.applicant?.name ?? '',
         orderId,
-        planName: overrides.planName ?? appData.plan?.code ?? '',
+        planName: overrides.planName ?? planNameFromCode(appData.plan?.code ?? ''),
         policyNumber: overrides.policyNumber ?? appData.policyNumber ?? '(not yet assigned)',
         issuedAt: overrides.issuedAt ?? (appData.issuedAt?.toDate().toLocaleDateString('en-MY', { year: 'numeric', month: 'long', day: 'numeric' }) ?? new Date().toLocaleDateString()),
         trackerUrl: tracker,

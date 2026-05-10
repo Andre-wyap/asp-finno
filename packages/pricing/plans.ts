@@ -203,3 +203,11 @@ export function getSelectablePlans(
     isPlanAvailableForSelection(plan.code, ageBand, occupationCategory)
   );
 }
+
+export function getPlanByCode(code: string) {
+  return plans.find((plan) => plan.code === code) ?? null;
+}
+
+export function planNameFromCode(code: string): string {
+  return getPlanByCode(code)?.name ?? code;
+}

@@ -222,8 +222,8 @@ Email-related event payload shapes:
 - `email_event` → `{ resendMessageId, kind: "delivered"|"bounced"|"opened"|"clicked"|"complaint", raw }` — joined back to the originating `email_sent` row by `resendMessageId`.
 
 PDPA notes:
-- NRIC is hashed (`nricHash`) at rest. The plaintext NRIC is held in memory only long enough to derive DOB/gender and the hash.
-- The customer tracker (`/track/[token]`) reads the doc but only returns `status`, the four timestamps, and `policyNumber` if issued. Never the applicant block.
+- NRIC is hashed (`nricHash`) at rest. The plaintext NRIC is held in memory only long enough to derive DOB/gender and the hash. NRIC is therefore never displayed anywhere — including the tracker — because it is not retrievable in plaintext.
+- The customer tracker (`/track/[token]`) returns the applicant block (name, DOB, gender, email, mobile, address, occupation, smoker), nominees (name, relationship, nationality), the plan summary with full benefits, the premium breakdown, the four timestamps, and `policyNumber` if issued. Access is gated by the unguessable `trackerToken` (UUID v4), which is delivered only via email to the applicant.
 
 ---
 
@@ -336,7 +336,7 @@ Return URL (browser redirect) goes to `/payment/result?orderId=...` which reads 
 `GET /track/[token]` — public route on the website backend.
 
 - Looks up by `trackerToken` (single-field index)
-- Returns only `status`, `createdAt`, `paidAt`, `issuedAt`, and `policyNumber` if `status == "issued"`
+- Returns the lifecycle data (`status`, `createdAt`, `paidAt`, `issuedAt`, and `policyNumber` once `status == "issued"`), the applicant block (name, DOB, gender, email, mobile, address, occupation, smoker — never NRIC), the nominee list (name, relationship, nationality), and the plan summary with the full 19-benefit breakdown plus the premium components (base premium, SST, stamp duty, discount, total).
 - 404s on unknown token; never reveals whether a token "used to exist"
 
 The tracker URL is embedded in every status email.

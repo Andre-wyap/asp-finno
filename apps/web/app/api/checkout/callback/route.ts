@@ -10,6 +10,7 @@ import {
 } from '../../../../lib/senangPay';
 import { triggerStatusEmail } from '@asp/shared/onStatusChange';
 import type { ApplicationStatus } from '@asp/shared/status';
+import { planNameFromCode } from '@asp/pricing';
 
 function jsonError(message: string, status = 400) {
   return NextResponse.json({ error: message }, { status });
@@ -167,7 +168,7 @@ async function handleCallback(request: Request) {
         application: {
           applicantName: applicationData.applicant?.name ?? '',
           applicantEmail: applicationData.applicant?.email ?? '',
-          planName: applicationData.plan?.code ?? '',
+          planName: planNameFromCode(applicationData.plan?.code ?? ''),
           planCode: applicationData.plan?.code ?? '',
           premiumAmount: applicationData.premium?.amount ?? 0,
           premiumCurrency: applicationData.premium?.currency ?? 'MYR',

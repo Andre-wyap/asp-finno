@@ -356,7 +356,7 @@ export async function POST(request: Request) {
       application: {
         applicantName: validated.applicant.name?.trim() ?? '',
         applicantEmail: validated.applicant.email?.trim().toLowerCase() ?? '',
-        planName: validated.plan.code,
+        planName: validated.plan.name,
         planCode: validated.plan.code,
         premiumAmount: totalPayable,
         premiumCurrency: 'MYR',

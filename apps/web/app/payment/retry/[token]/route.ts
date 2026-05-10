@@ -1,6 +1,7 @@
 import { FieldValue } from 'firebase-admin/firestore';
 import { NextRequest, NextResponse } from 'next/server';
 import { MIN_PROMO_PAYABLE_AMOUNT } from '@asp/shared/promo';
+import { planNameFromCode } from '@asp/pricing';
 import { getDb } from '../../../../lib/firebaseAdmin';
 import {
   buildPaymentUrl,
@@ -80,7 +81,7 @@ export async function GET(
   const detail =
     typeof payment.detail === 'string' && payment.detail
       ? payment.detail
-      : sanitizeDetail(`Allianz_Shield_Plus_${plan.code ?? 'Plan'}_${orderId}`);
+      : sanitizeDetail(`Allianz_Shield_Plus_${planNameFromCode(plan.code ?? '') || 'Plan'}_${orderId}`);
   const hash = generatePaymentHash({ secret, detail, amount, orderId });
 
   const updatePayload: Record<string, unknown> = {

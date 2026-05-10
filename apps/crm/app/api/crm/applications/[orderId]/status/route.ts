@@ -2,6 +2,7 @@ import { FieldValue } from 'firebase-admin/firestore';
 import { NextResponse } from 'next/server';
 import { APPLICATION_STATUSES, type ApplicationStatus } from '@asp/shared/status';
 import { triggerStatusEmail } from '@asp/shared/onStatusChange';
+import { planNameFromCode } from '@asp/pricing';
 import { authError, verifyAdmin } from '../../../../../../lib/auth';
 import { getDb } from '../../../../../../lib/firebaseAdmin';
 
@@ -104,7 +105,7 @@ export async function POST(
       application: {
         applicantName: appData.applicant?.name ?? '',
         applicantEmail: appData.applicant?.email ?? '',
-        planName: appData.plan?.code ?? '',
+        planName: planNameFromCode(appData.plan?.code ?? ''),
         planCode: appData.plan?.code ?? '',
         premiumAmount: appData.premium?.amount ?? 0,
         premiumCurrency: appData.premium?.currency ?? 'MYR',
