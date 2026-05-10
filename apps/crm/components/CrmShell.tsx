@@ -3,10 +3,11 @@
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutList, LogOut, Mail, Tag } from 'lucide-react';
+import { Activity, LayoutList, LogOut, Mail, Tag } from 'lucide-react';
 
 const navItems = [
   { href: '/applications', label: 'Applicants', icon: LayoutList },
+  { href: '/activity', label: 'Activity Log', icon: Activity },
   { href: '/email-marketing', label: 'Email Marketing', icon: Mail },
   { href: '/promo-codes', label: 'Promo Codes', icon: Tag }
 ];

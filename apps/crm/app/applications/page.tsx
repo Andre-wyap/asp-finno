@@ -46,6 +46,7 @@ export default async function ApplicationsPage({ searchParams }: { searchParams:
   const status = sp.status ?? '';
   const search = sp.search?.toLowerCase().trim() ?? '';
   const searchField = sp.searchField ?? 'name';
+  const archive = sp.archive ?? 'active';
   const cursor = sp.cursor ?? '';
 
   const db = getDb();
@@ -54,7 +55,10 @@ export default async function ApplicationsPage({ searchParams }: { searchParams:
 
   if (searchField === 'orderId' && search) {
     const doc = await db.collection('applications').doc(search.toUpperCase()).get();
-    const applications = doc.exists ? [{ id: doc.id, ...doc.data() }] : [];
+    const applications =
+      doc.exists && matchesArchiveFilter({ id: doc.id, ...doc.data() }, archive)
+        ? [{ id: doc.id, ...doc.data() }]
+        : [];
     return (
       <CrmShell>
         <PageContent applications={applications} nextCursor={null} />
@@ -66,7 +70,7 @@ export default async function ApplicationsPage({ searchParams }: { searchParams:
 
   if (search && (searchField === 'name' || searchField === 'email')) {
     const field = searchField === 'name' ? 'searchKeys.nameLower' : 'searchKeys.emailLower';
-    query = query.where(field, '>=', search).where(field, '<', search + '').orderBy(field);
+    query = query.where(field, '>=', search).where(field, '<', search + '').orderBy(field);
   } else {
     query = query.orderBy('createdAt', 'desc');
   }
@@ -76,11 +80,12 @@ export default async function ApplicationsPage({ searchParams }: { searchParams:
     if (cursorDoc.exists) query = query.startAfter(cursorDoc);
   }
 
-  const snapshot = await query.limit(PAGE_SIZE + 1).get();
+  const snapshot = await query.limit(PAGE_SIZE * 2 + 1).get();
   const docs = snapshot.docs;
-  const hasMore = docs.length > PAGE_SIZE;
-  const page = hasMore ? docs.slice(0, PAGE_SIZE) : docs;
-  const nextCursor = hasMore ? page[page.length - 1].id : null;
+  const filteredDocs = docs.filter((d) => matchesArchiveFilter(d.data(), archive));
+  const hasMore = docs.length > PAGE_SIZE * 2 || filteredDocs.length > PAGE_SIZE;
+  const page = filteredDocs.length > PAGE_SIZE ? filteredDocs.slice(0, PAGE_SIZE) : filteredDocs;
+  const nextCursor = hasMore && page.length > 0 ? page[page.length - 1].id : null;
   const applications = page.map((d) => ({ id: d.id, ...d.data() })) as Record<string, unknown>[];
 
   return (
@@ -111,6 +116,7 @@ export default async function ApplicationsPage({ searchParams }: { searchParams:
             currentStatus={status}
             currentSearch={sp.search ?? ''}
             currentSearchField={searchField}
+            currentArchive={archive}
           />
         </div>
 
@@ -134,6 +140,7 @@ export default async function ApplicationsPage({ searchParams }: { searchParams:
               <tbody>
                 {apps.map((app) => {
                   const s = (app.status as string) ?? '';
+                  const isArchived = Boolean(app.archivedAt);
                   const applicant = (app.applicant as Record<string, unknown>) ?? {};
                   const plan = (app.plan as Record<string, unknown>) ?? {};
                   return (
@@ -154,7 +161,7 @@ export default async function ApplicationsPage({ searchParams }: { searchParams:
                         <span
                           className={`rounded-full px-2.5 py-1 text-xs font-semibold ${STATUS_COLORS[s] ?? 'bg-surface-container text-on-surface-variant'}`}
                         >
-                          {STATUS_LABELS[s] ?? s}
+                          {isArchived ? 'Archived' : (STATUS_LABELS[s] ?? s)}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-on-surface-variant">
@@ -198,6 +205,13 @@ export default async function ApplicationsPage({ searchParams }: { searchParams:
       </div>
     );
   }
+}
+
+function matchesArchiveFilter(app: Record<string, unknown>, archive: string) {
+  const archived = Boolean(app.archivedAt);
+  if (archive === 'archived') return archived;
+  if (archive === 'all') return true;
+  return !archived;
 }
 
 function buildUrl(

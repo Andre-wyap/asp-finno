@@ -28,6 +28,7 @@ A personal accident insurance site that allows customers to:
 6. **Customer issuance tracker** so customers can track their policy progress
 7. **CRM frontend** for admin users to view and update issuance status
 8. **Email automation** via Resend — status changes trigger customer emails; the CRM is the operator surface for previewing, resending, and ad-hoc sends (see §CRM Email Control)
+9. **CRM issuance operations** — direct CRM NRIC display for insurance issuance, lead archiving, CSV import, and auditable admin activity logs
 
 ## Design
 
@@ -183,10 +184,10 @@ The normalization helper lives in `@asp/shared/src/mobile.ts` so both the form (
 
 ```
 applications/{orderId}
-  status:          "lead" | "paid" | "payment_failed" | "issued"
-  applicant:       { name, nricHash, dob, email, mobile, address, gender, occupation, smoker }
+  status:          "applied" | "paid" | "payment_failed" | "issued" | "drop"
+  applicant:       { name, nric, nricHash, dob, email, mobile, address, gender, occupation, smoker }
                    # mobile: E.164, MY default (e.g. "+60123456789")
-  nominees:        [ { name, nricHash, relationship, nationality }, ... up to 2 ]
+  nominees:        [ { name, nric, nricHash, relationship, nationality }, ... up to 2 ]
   plan:            { code, ageBand, occupationCategory }
   premium:         { amount, currency: "MYR" }
   pdpaConsent:     { accepted: boolean, at: Timestamp, version: string }   # captured at form submit
@@ -195,6 +196,10 @@ applications/{orderId}
   reminderSent:    boolean (default false)
   ownerAdminId:    string | null
   underwritingFlag: boolean
+  archivedAt:      Timestamp | null
+  archivedBy:      { id: string, email: string } | null
+  archiveReason:   string | null
+  statusBeforeArchive: string | null
   # CRM search support — denormalized lowercase fields for prefix queries (Firestore can't do partial-text search)
   searchKeys:      { nameLower: string, emailLower: string }
   createdAt, updatedAt, paidAt, issuedAt: Timestamp
@@ -202,7 +207,9 @@ applications/{orderId}
 
 **Search note:** Firestore has no native partial-text search. The `searchKeys.nameLower` / `emailLower` fields exist so the CRM list view can do prefix queries (`>=` and `<` over the lowercased value). For the v1 volume this is enough; if order count exceeds ~10K and free-text search becomes a need, swap in Algolia/Typesense.
 
-**NRIC hashing:** `nricHash = HMAC-SHA256(nric, NRIC_HASH_PEPPER)` — deterministic so duplicate detection works, peppered so a leak of Firestore alone doesn't expose NRICs to a rainbow table.
+**NRIC storage:** New applications store plaintext `nric` for CRM issuance work and also store `nricHash = HMAC-SHA256(nric, NRIC_HASH_PEPPER)` for duplicate detection and verification. Plaintext NRIC must never be written to event payloads, logs, URLs, email templates, or the public customer tracker.
+
+Existing applications created before plaintext `nric` storage only have `nricHash`; their original NRIC cannot be recovered from the hash. CRM should display `Not captured` for those older rows and ask the applicant/admin to re-provide the NRIC when needed.
 
 `applications/{orderId}/events/{eventId}` — append-only audit log.
 
@@ -210,10 +217,12 @@ applications/{orderId}
 events/{eventId}
   type:    "status_change" | "note" | "payment_callback"
          | "email_sent" | "email_event"      # email_event = Resend webhook (delivered/bounced/opened/clicked/complaint)
+         | "application_archived" | "application_unarchived"
+         | "import_created" | "import_row_created" | "import_row_failed"
   from:    string | null
   to:      string | null
-  actor:   { kind: "system" | "admin" | "customer" | "resend", id: string | null }
-  payload: map           # PDPA-safe; never store plaintext NRIC
+  actor:   { kind: "system" | "admin" | "customer" | "resend", id: string | null, email?: string | null }
+  payload: map           # PDPA-safe; never store plaintext NRIC or raw CSV contents
   at:      Timestamp
 ```
 
@@ -221,8 +230,24 @@ Email-related event payload shapes:
 - `email_sent` → `{ template, resendMessageId, to, subject, triggeredBy }`
 - `email_event` → `{ resendMessageId, kind: "delivered"|"bounced"|"opened"|"clicked"|"complaint", raw }` — joined back to the originating `email_sent` row by `resendMessageId`.
 
+`importBatches/{batchId}` — CRM CSV import audit record.
+
+```
+importBatches/{batchId}
+  uploadedBy:     { id: string, email: string }
+  originalName:   string
+  status:         "validated" | "committed" | "failed"
+  totalRows:      number
+  validRows:      number
+  failedRows:     number
+  createdOrderIds: string[]
+  errors:         [ { row: number, field?: string, message: string } ]
+  createdAt, committedAt: Timestamp
+```
+
 PDPA notes:
-- NRIC is hashed (`nricHash`) at rest. The plaintext NRIC is held in memory only long enough to derive DOB/gender and the hash. NRIC is therefore never displayed anywhere — including the tracker — because it is not retrievable in plaintext.
+- NRIC is stored in plaintext for authenticated CRM issuance use. This is operationally simpler but increases breach impact, so CRM access must remain admin-only and Firestore client access must remain denied.
+- Event payloads, logs, emails, CSV import audit records, and the public tracker must never include plaintext NRIC.
 - The customer tracker (`/track/[token]`) returns the applicant block (name, DOB, gender, email, mobile, address, occupation, smoker), nominees (name, relationship, nationality), the plan summary with full benefits, the premium breakdown, the four timestamps, and `policyNumber` if issued. Access is gated by the unguessable `trackerToken` (UUID v4), which is delivered only via email to the applicant.
 
 ---
@@ -305,7 +330,50 @@ All five endpoints require the `role: "admin"` custom claim and stamp `actor: { 
 - Custom (free-form) sends are subject to a per-admin rate limit (10/min, 200/day) enforced at the endpoint
 - Templates can only be addressed to `applicant.email` of the order they belong to — no cross-application sends
 - Preview is read-only and never calls Resend
-- Resending a `lead-reminder` while `status != "lead"` is rejected at the endpoint
+- Resending a `lead-reminder` while `status != "applied"` is rejected at the endpoint
+
+---
+
+## CRM Issuance Operations
+
+The CRM must support the operational tasks needed after application capture without weakening the public website privacy posture.
+
+### CRM NRIC display
+
+- CRM detail pages show applicant and nominee NRIC directly for insurance issuance.
+- Historical hash-only rows display `Not captured` because plaintext NRIC cannot be reconstructed from `nricHash`.
+- The public customer tracker must continue to omit NRIC.
+
+### Archive leads
+
+- Admins may archive lead-like records that should disappear from normal follow-up queues: `applied`, `payment_failed`, and `drop`.
+- Archive requires an admin reason and writes `archivedAt`, `archivedBy`, `archiveReason`, and `statusBeforeArchive` on the application.
+- Default applicant lists exclude archived records. CRM provides an `Archived` filter and an unarchive action.
+- Archived records do not receive normal reminder/follow-up sends unless unarchived first.
+
+### CSV import
+
+- CRM provides a CSV import workflow with upload, column mapping, dry-run validation, conflict preview, and final confirmation.
+- Imports use the same validation and normalization pipeline as checkout: NRIC validation, plaintext `nric` storage, `nricHash`, Malaysian mobile normalization, email normalization, and plan/status validation.
+- Import batches are recorded in `importBatches/{batchId}` with uploader, timestamp, original filename, counts, row-level errors, and final result.
+- Raw CSV content and plaintext NRIC are not persisted after processing unless a future compliance requirement adds secure object storage retention.
+
+### Activity log
+
+- The CRM activity log is the human-readable audit view for admin operations.
+- Minimum columns: user, timestamp, action, order ID/application ID, import batch ID when relevant, and a PDPA-safe summary.
+- It is initially sourced from an `events` collection group query, and later import batch events, covering status changes, notes, emails, archives, unarchives, and imports.
+- Every state-changing CRM endpoint stamps `actor: { kind: "admin", id, email }` consistently.
+
+### Endpoints (CRM backend)
+
+| Method & path | Purpose |
+|---|---|
+| `POST /api/crm/applications/:orderId/archive` | `{ reason }` → archives application, writes `application_archived` |
+| `POST /api/crm/applications/:orderId/unarchive` | `{ reason? }` → restores application to normal lists, writes `application_unarchived` |
+| `POST /api/crm/imports/validate` | CSV dry-run validation and duplicate/conflict preview |
+| `POST /api/crm/imports/commit` | Writes validated import rows and `importBatches/{batchId}` metadata |
+| `GET /api/crm/activity` | Paginated global activity log with filters |
 
 ---
 
@@ -314,9 +382,9 @@ All five endpoints require the `role: "admin"` custom claim and stamp `actor: { 
 Lead reminder:
 - Cloud Scheduler runs hourly: `0 * * * *` Asia/Kuala_Lumpur
 - Target: HTTPS Cloud Function `leadReminderTick`
-- Function queries `applications` where `status == "lead"`, `reminderSent == false`, `createdAt < now - 24h`, batches in pages of 100, fires the reminder email, and sets `reminderSent=true`
+- Function queries `applications` where `status == "applied"`, `reminderSent == false`, `archivedAt == null`, `createdAt < now - 24h`, batches in pages of 100, fires the reminder email, and sets `reminderSent=true`
 
-A composite index on `(status, reminderSent, createdAt)` is required.
+A composite index on `(status, reminderSent, archivedAt, createdAt)` is required once archive filtering is added to the reminder job.
 
 ---
 
@@ -324,7 +392,7 @@ A composite index on `(status, reminderSent, createdAt)` is required.
 
 Two endpoints on the website backend:
 
-- `POST /api/checkout/initiate` — generates `orderId`, writes `lead` doc, returns Senang Pay redirect URL with hash signature
+- `POST /api/checkout/initiate` — generates `orderId`, writes `applied` doc, returns Senang Pay redirect URL with hash signature
 - `POST /api/checkout/callback` — Senang Pay server-to-server. Verifies hash with the merchant secret from Secret Manager. Idempotent on `orderId` + Senang Pay txn id (a duplicate callback must not re-trigger the email)
 
 Return URL (browser redirect) goes to `/payment/result?orderId=...` which reads the current status from Firestore and renders success or retry.

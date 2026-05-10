@@ -225,3 +225,38 @@ Working tracker for Allianz Shield Plus. Spec lives in [Claude.md](./Claude.md);
 - [x] Store applied promo code and discount amount on application/payment record
 - [x] Show discount in order summary, checkout payload, CRM detail, and payment amount calculation
 - [x] Add guardrails for expired/disabled/usage-limited promo codes (shared `validatePromoForUse` helper; `usageCount` increments on `paid` callback)
+
+## Phase 11: CRM Issuance Operations & Data Controls
+
+### CRM NRIC Display
+- [x] Keep `nricHash` for duplicate detection/search verification
+- [x] Store plaintext applicant and nominee `nric` on new checkout submissions for insurance issuance
+- [x] Show applicant and nominee NRIC directly in the authenticated CRM detail page
+- [x] Remove `NRIC_ENCRYPTION_KEY`, encrypted NRIC payloads, and eye-icon reveal flow
+- [x] Document existing-app limitation in CRM: historical applications that only have `nricHash` cannot recover plaintext NRIC unless the applicant provides it again
+- [ ] Add a CRM edit/backfill flow for historical hash-only applications when an admin obtains the NRIC again
+- [ ] Keep public tracker, emails, events, logs, and activity summaries free of plaintext NRIC
+
+### Archive Leads
+- [x] Add archive action for lead-like records (`applied`, `payment_failed`, `drop`) with required admin reason
+- [x] Store archive metadata on the application (`archivedAt`, `archivedBy`, `archiveReason`, `statusBeforeArchive`)
+- [x] Exclude archived applications from the default Applicants list; add an "Archived" filter/view
+- [x] Write `application_archived` / `application_unarchived` events with admin attribution
+- [ ] Prevent archived records from receiving normal follow-up/payment reminder actions unless explicitly unarchived
+- [ ] Update Firestore indexes for applicant list/reminder queries that filter on `archivedAt`
+
+### CSV Import
+- [ ] Add CRM CSV import screen with upload, column mapping, dry-run validation, and final confirmation before write
+- [ ] Define supported CSV columns for applicant, nominee, plan, premium/status, policy number, and notes
+- [ ] Validate every row server-side using existing shared helpers for NRIC, mobile, email, plan, and promo/status constraints
+- [ ] Store plaintext NRIC and hash NRIC during import using the same `nric` + `nricHash` pipeline as checkout
+- [ ] Detect duplicates by order ID, NRIC hash, email, and mobile; show row-level conflicts before import
+- [ ] Store import batch metadata in `importBatches/{batchId}` with uploader, timestamp, file name, counts, validation errors, and final result
+- [ ] Do not persist raw CSV files or plaintext NRIC after processing unless a later compliance requirement explicitly demands secure object storage retention
+
+### CRM Activity Log
+- [x] Add a global CRM activity log page/table with user, timestamp, action, application/order ID, and safe payload summary
+- [ ] Feed the activity log from application `events` plus import batch events so status changes, notes, emails, archives, and imports are visible in one place (application `events` are live; import batch events pending CSV import)
+- [ ] Add filters for admin user, action type, date range, order ID, and import batch ID
+- [ ] Ensure every state-changing CRM endpoint stamps `actor: { kind: "admin", id, email }` consistently
+- [ ] Keep activity log payloads PDPA-safe: no plaintext NRIC, no full raw email bodies, no raw uploaded CSV contents

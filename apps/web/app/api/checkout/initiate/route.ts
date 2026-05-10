@@ -279,6 +279,7 @@ export async function POST(request: Request) {
       status: 'applied',
       applicant: {
         name: validated.applicant.name?.trim(),
+        nric: validated.applicant.nric,
         nricHash: hashNric(validated.applicant.nric ?? '', nricHashPepper),
         dob: validated.parsedNric.dob,
         email: validated.applicant.email?.trim().toLowerCase(),
@@ -290,6 +291,7 @@ export async function POST(request: Request) {
       },
       nominees: validated.nominees.map((nominee) => ({
         name: nominee.name?.trim(),
+        nric: nominee.nric,
         nricHash: hashNric(nominee.nric ?? '', nricHashPepper),
         relationship: nominee.relationship?.trim(),
         nationality: nominee.nationality?.trim() || 'Malaysian'

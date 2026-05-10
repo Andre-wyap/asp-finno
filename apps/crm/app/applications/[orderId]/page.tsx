@@ -5,6 +5,7 @@ import { CrmShell } from '../../../components/CrmShell';
 import { StatusActions } from '../../../components/StatusActions';
 import { NoteForm } from '../../../components/NoteForm';
 import { EmailControl } from '../../../components/EmailControl';
+import { ArchiveActions } from '../../../components/ArchiveActions';
 import { verifyAdmin } from '../../../lib/auth';
 import { getDb } from '../../../lib/firebaseAdmin';
 
@@ -49,7 +50,9 @@ const EVENT_ICONS: Record<string, string> = {
   note: '✎',
   payment_callback: '💳',
   email_sent: '✉',
-  email_event: '📬'
+  email_event: '📬',
+  application_archived: '▣',
+  application_unarchived: '▢'
 };
 
 export default async function ApplicationDetailPage({ params }: { params: PageParams }) {
@@ -86,6 +89,7 @@ export default async function ApplicationDetailPage({ params }: { params: PagePa
   const plan = (app.plan as Record<string, unknown>) ?? {};
   const premium = (app.premium as Record<string, unknown>) ?? {};
   const status = (app.status as string) ?? '';
+  const archived = Boolean(app.archivedAt);
 
   const formatCurrency = (n: unknown) =>
     typeof n === 'number'
@@ -119,7 +123,7 @@ export default async function ApplicationDetailPage({ params }: { params: PagePa
           <span
             className={`self-start rounded-full px-3 py-1.5 text-sm font-semibold ring-1 sm:self-auto ${STATUS_COLORS[status] ?? 'bg-surface-container text-on-surface-variant ring-outline-variant'}`}
           >
-            {STATUS_LABELS[status] ?? status}
+            {archived ? 'Archived' : (STATUS_LABELS[status] ?? status)}
           </span>
         </div>
 
@@ -129,6 +133,10 @@ export default async function ApplicationDetailPage({ params }: { params: PagePa
             {/* Applicant card */}
             <InfoCard title="Applicant">
               <Row label="Name" value={applicant.name as string} />
+              <Row
+                label="NRIC"
+                value={typeof applicant.nric === 'string' ? applicant.nric : 'Not captured'}
+              />
               <Row label="Date of birth" value={applicant.dob as string} />
               <Row label="Gender" value={applicant.gender as string} />
               <Row label="Email" value={applicant.email as string} />
@@ -153,6 +161,7 @@ export default async function ApplicationDetailPage({ params }: { params: PagePa
                     </p>
                     <div className="mt-2 grid gap-2 text-sm sm:grid-cols-2">
                       <Row label="Name" value={n.name as string} />
+                      <Row label="NRIC" value={typeof n.nric === 'string' ? n.nric : 'Not captured'} />
                       <Row label="Relationship" value={n.relationship as string} />
                       <Row label="Nationality" value={n.nationality as string} />
                     </div>
@@ -193,6 +202,7 @@ export default async function ApplicationDetailPage({ params }: { params: PagePa
               <Row label="Paid" value={formatDate(app.paidAt, true)} />
               <Row label="Issued" value={formatDate(app.issuedAt, true)} />
               <Row label="Updated" value={formatDate(app.updatedAt, true)} />
+              {archived && <Row label="Archived" value={formatDate(app.archivedAt, true)} />}
             </InfoCard>
 
             {/* Event timeline */}
@@ -232,8 +242,19 @@ export default async function ApplicationDetailPage({ params }: { params: PagePa
                                 Template: {evPayload.template}
                               </p>
                             )}
+                            {(ev.type === 'application_archived' ||
+                              ev.type === 'application_unarchived') &&
+                              typeof evPayload.reason === 'string' &&
+                              evPayload.reason && (
+                                <p className="mt-0.5 text-on-surface-variant">
+                                  Reason: {evPayload.reason}
+                                </p>
+                              )}
                             <p className="mt-0.5 text-xs text-on-surface-variant">
-                              {(actor.kind as string) ?? 'system'} · {formatDate(ev.at, true)}
+                              {typeof actor.email === 'string' && actor.email
+                                ? actor.email
+                                : ((actor.kind as string) ?? 'system')}{' '}
+                              · {formatDate(ev.at, true)}
                             </p>
                           </div>
                         </li>
@@ -248,7 +269,9 @@ export default async function ApplicationDetailPage({ params }: { params: PagePa
           {/* Right sidebar */}
           <div className="space-y-4">
             {/* Status actions */}
-            <StatusActions orderId={orderId} currentStatus={status} />
+            {!archived && <StatusActions orderId={orderId} currentStatus={status} />}
+
+            <ArchiveActions orderId={orderId} currentStatus={status} archived={archived} />
 
             {/* Add note */}
             <NoteForm orderId={orderId} />

@@ -15,6 +15,7 @@ export async function GET(request: Request) {
   const status = searchParams.get('status') ?? '';
   const search = searchParams.get('search')?.toLowerCase().trim() ?? '';
   const searchField = searchParams.get('searchField') ?? 'name'; // 'name' | 'email' | 'orderId'
+  const archive = searchParams.get('archive') ?? 'active';
   const cursor = searchParams.get('cursor') ?? '';
 
   const db = getDb();
@@ -23,7 +24,11 @@ export async function GET(request: Request) {
   if (searchField === 'orderId' && search) {
     const doc = await db.collection('applications').doc(search.toUpperCase()).get();
     if (!doc.exists) return NextResponse.json({ applications: [], nextCursor: null });
-    return NextResponse.json({ applications: [{ id: doc.id, ...doc.data() }], nextCursor: null });
+    const app = { id: doc.id, ...doc.data() };
+    return NextResponse.json({
+      applications: matchesArchiveFilter(app, archive) ? [app] : [],
+      nextCursor: null
+    });
   }
 
   let query: FirebaseFirestore.Query = db.collection('applications');
@@ -52,15 +57,23 @@ export async function GET(request: Request) {
     }
   }
 
-  query = query.limit(PAGE_SIZE + 1);
+  query = query.limit(PAGE_SIZE * 2 + 1);
 
   const snapshot = await query.get();
   const docs = snapshot.docs;
-  const hasMore = docs.length > PAGE_SIZE;
-  const page = hasMore ? docs.slice(0, PAGE_SIZE) : docs;
-  const nextCursor = hasMore ? page[page.length - 1].id : null;
+  const filteredDocs = docs.filter((doc) => matchesArchiveFilter(doc.data(), archive));
+  const hasMore = docs.length > PAGE_SIZE * 2 || filteredDocs.length > PAGE_SIZE;
+  const page = filteredDocs.length > PAGE_SIZE ? filteredDocs.slice(0, PAGE_SIZE) : filteredDocs;
+  const nextCursor = hasMore && page.length > 0 ? page[page.length - 1].id : null;
 
   const applications = page.map((doc) => ({ id: doc.id, ...doc.data() }));
 
   return NextResponse.json({ applications, nextCursor });
+}
+
+function matchesArchiveFilter(app: Record<string, unknown>, archive: string) {
+  const archived = Boolean(app.archivedAt);
+  if (archive === 'archived') return archived;
+  if (archive === 'all') return true;
+  return !archived;
 }

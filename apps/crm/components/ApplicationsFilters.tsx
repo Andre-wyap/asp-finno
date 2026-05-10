@@ -22,11 +22,13 @@ const FIELD_OPTIONS = [
 export function ApplicationsFilters({
   currentStatus,
   currentSearch,
-  currentSearchField
+  currentSearchField,
+  currentArchive
 }: {
   currentStatus: string;
   currentSearch: string;
   currentSearchField: string;
+  currentArchive: string;
 }) {
   const router = useRouter();
   const [search, setSearch] = useState(currentSearch);
@@ -36,6 +38,7 @@ export function ApplicationsFilters({
     e.preventDefault();
     const params = new URLSearchParams();
     if (currentStatus) params.set('status', currentStatus);
+    if (currentArchive && currentArchive !== 'active') params.set('archive', currentArchive);
     if (search.trim()) {
       params.set('search', search.trim());
       params.set('searchField', searchField);
@@ -46,6 +49,18 @@ export function ApplicationsFilters({
   function handleStatusChange(value: string) {
     const params = new URLSearchParams();
     if (value) params.set('status', value);
+    if (currentArchive && currentArchive !== 'active') params.set('archive', currentArchive);
+    if (search.trim()) {
+      params.set('search', search.trim());
+      params.set('searchField', searchField);
+    }
+    router.push(`/applications?${params.toString()}`);
+  }
+
+  function handleArchiveChange(value: string) {
+    const params = new URLSearchParams();
+    if (currentStatus) params.set('status', currentStatus);
+    if (value && value !== 'active') params.set('archive', value);
     if (search.trim()) {
       params.set('search', search.trim());
       params.set('searchField', searchField);
@@ -66,6 +81,16 @@ export function ApplicationsFilters({
             {o.label}
           </option>
         ))}
+      </select>
+
+      <select
+        value={currentArchive}
+        onChange={(e) => handleArchiveChange(e.target.value)}
+        className="rounded-full border-0 bg-surface-container-high px-4 py-2.5 text-sm font-semibold text-on-surface focus:ring-2 focus:ring-primary/30"
+      >
+        <option value="active">Active</option>
+        <option value="archived">Archived</option>
+        <option value="all">Active + archived</option>
       </select>
 
       {/* Search field selector + input */}
