@@ -7,6 +7,10 @@ import type { ApplicationStatus } from '@asp/shared/status';
 
 type TemplateKey = ApplicationStatus | 'lead_reminder';
 
+function jsonError(message: string, status = 400) {
+  return NextResponse.json({ error: message }, { status });
+}
+
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ orderId: string }> }
@@ -19,15 +23,24 @@ export async function POST(
   }
 
   const { orderId } = await params;
-  const body = (await request.json()) as { template: TemplateKey };
+  let body: { template: TemplateKey };
+  try {
+    body = (await request.json()) as { template: TemplateKey };
+  } catch {
+    return jsonError('Invalid resend request body');
+  }
   const { template } = body;
+
+  if (!template) {
+    return jsonError('Template is required');
+  }
 
   const db = getDb();
   const appRef = db.collection('applications').doc(orderId);
   const appDoc = await appRef.get();
 
   if (!appDoc.exists) {
-    return NextResponse.json({ error: 'Application not found' }, { status: 404 });
+    return jsonError('Application not found', 404);
   }
 
   const appData = appDoc.data()!;
@@ -38,10 +51,7 @@ export async function POST(
 
   // Guard: lead_reminder only makes sense if still a lead
   if (template === 'lead_reminder' && appData.status !== 'lead') {
-    return NextResponse.json(
-      { error: 'lead_reminder can only be resent when status is "lead"' },
-      { status: 422 }
-    );
+    return jsonError('lead_reminder can only be resent when status is "lead"', 422);
   }
 
   const application = {
@@ -58,15 +68,21 @@ export async function POST(
   };
 
   if (template === 'lead_reminder') {
-    await triggerLeadReminderEmail({ orderId, application, writeEvent });
+    const result = await triggerLeadReminderEmail({ orderId, application, writeEvent });
+    if (!result.ok) {
+      return jsonError(result.error ?? 'Unable to send template.', 502);
+    }
   } else {
-    await triggerStatusEmail({
+    const result = await triggerStatusEmail({
       orderId,
       application,
       from: null,
       to: template as ApplicationStatus,
       writeEvent,
     });
+    if (!result.ok) {
+      return jsonError(result.error ?? 'Unable to send template.', 502);
+    }
   }
 
   return NextResponse.json({ ok: true });

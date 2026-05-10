@@ -28,6 +28,12 @@ export interface StatusEmailParams {
   writeEvent: (data: Record<string, unknown>) => Promise<void>;
 }
 
+export interface EmailTriggerResult {
+  ok: boolean;
+  messageId?: string | null;
+  error?: string;
+}
+
 function trackerUrl(trackerToken: string): string {
   const base = process.env.TRACKER_BASE_URL ?? 'https://asp.finnomalaysia.com';
   return `${base}/track/${trackerToken}`;
@@ -43,7 +49,7 @@ export async function triggerStatusEmail({
   application,
   to,
   writeEvent,
-}: StatusEmailParams): Promise<void> {
+}: StatusEmailParams): Promise<EmailTriggerResult> {
   const tracker = trackerUrl(application.trackerToken);
 
   let subject: string;
@@ -78,7 +84,9 @@ export async function triggerStatusEmail({
       break;
 
     case 'issued':
-      if (!application.policyNumber) return;
+      if (!application.policyNumber) {
+        return { ok: false, error: 'Policy number is required before sending an issued email.' };
+      }
       subject = `Your policy has been issued — ${application.policyNumber}`;
       template = React.createElement(Issued, {
         applicantName: application.applicantName,
@@ -91,7 +99,7 @@ export async function triggerStatusEmail({
       break;
 
     default:
-      return;
+      return { ok: true };
   }
 
   try {
@@ -113,7 +121,7 @@ export async function triggerStatusEmail({
         },
       });
       console.error('email_send_failed', { orderId, to, error: result.error });
-      return;
+      return { ok: false, error: result.error };
     }
 
     await writeEvent({
@@ -127,7 +135,9 @@ export async function triggerStatusEmail({
         triggeredBy: 'status_change',
       },
     });
+    return { ok: true, messageId: result.messageId };
   } catch (err) {
+    const error = err instanceof Error ? err.message : String(err);
     console.error('email_exception', { orderId, to, err });
     await writeEvent({
       type: 'email_send_failed',
@@ -136,9 +146,10 @@ export async function triggerStatusEmail({
         template: to,
         to: application.applicantEmail,
         subject,
-        error: err instanceof Error ? err.message : String(err),
+        error,
       },
     });
+    return { ok: false, error };
   }
 }
 
@@ -146,7 +157,7 @@ export async function triggerLeadReminderEmail(params: {
   orderId: string;
   application: ApplicationSnapshot;
   writeEvent: (data: Record<string, unknown>) => Promise<void>;
-}): Promise<void> {
+}): Promise<EmailTriggerResult> {
   const { orderId, application, writeEvent } = params;
   const tracker = trackerUrl(application.trackerToken);
   const payment = paymentUrl(application.trackerToken);
@@ -176,7 +187,7 @@ export async function triggerLeadReminderEmail(params: {
         payload: { template: 'lead_reminder', to: application.applicantEmail, subject, error: result.error },
       });
       console.error('lead_reminder_send_failed', { orderId, error: result.error });
-      return;
+      return { ok: false, error: result.error };
     }
 
     await writeEvent({
@@ -190,7 +201,20 @@ export async function triggerLeadReminderEmail(params: {
         triggeredBy: 'lead_reminder_cron',
       },
     });
+    return { ok: true, messageId: result.messageId };
   } catch (err) {
+    const error = err instanceof Error ? err.message : String(err);
     console.error('lead_reminder_exception', { orderId, err });
+    await writeEvent({
+      type: 'email_send_failed',
+      actor: { kind: 'system', id: 'lead-reminder-cron' },
+      payload: {
+        template: 'lead_reminder',
+        to: application.applicantEmail,
+        subject,
+        error,
+      },
+    });
+    return { ok: false, error };
   }
 }

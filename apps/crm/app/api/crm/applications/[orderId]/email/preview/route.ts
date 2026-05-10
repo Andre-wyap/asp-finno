@@ -11,6 +11,10 @@ import type { ApplicationStatus } from '@asp/shared/status';
 
 type TemplateKey = ApplicationStatus | 'lead_reminder';
 
+function jsonError(message: string, status = 400) {
+  return NextResponse.json({ error: message }, { status });
+}
+
 function trackerUrl(trackerToken: string): string {
   const base = process.env.TRACKER_BASE_URL ?? 'https://asp.finnomalaysia.com';
   return `${base}/track/${trackerToken}`;
@@ -32,13 +36,22 @@ export async function POST(
   }
 
   const { orderId } = await params;
-  const body = (await request.json()) as { template: TemplateKey; overrides?: Record<string, string> };
+  let body: { template: TemplateKey; overrides?: Record<string, string> };
+  try {
+    body = (await request.json()) as { template: TemplateKey; overrides?: Record<string, string> };
+  } catch {
+    return jsonError('Invalid preview request body');
+  }
   const { template, overrides = {} } = body;
+
+  if (!template) {
+    return jsonError('Template is required');
+  }
 
   const db = getDb();
   const appDoc = await db.collection('applications').doc(orderId).get();
   if (!appDoc.exists) {
-    return NextResponse.json({ error: 'Application not found' }, { status: 404 });
+    return jsonError('Application not found', 404);
   }
 
   const appData = appDoc.data()!;
@@ -98,9 +111,14 @@ export async function POST(
       break;
 
     default:
-      return NextResponse.json({ error: `Unknown template: ${template}` }, { status: 400 });
+      return jsonError(`Unknown template: ${template}`);
   }
 
-  const html = await render(element);
-  return NextResponse.json({ html });
+  try {
+    const html = await render(element);
+    return NextResponse.json({ html });
+  } catch (error) {
+    console.error('email_preview_render_failed', { orderId, template, error });
+    return jsonError('Unable to render preview. Check the server logs for the template renderer error.', 500);
+  }
 }

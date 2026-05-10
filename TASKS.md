@@ -120,6 +120,15 @@ Working tracker for Allianz Shield Plus. Spec lives in [Claude.md](./Claude.md);
   - [ ] After Phase 9 domain bind: update to `https://asp.finnomalaysia.com/api/webhooks/resend`
 - [x] Cloud Scheduler job → `leadReminderTick` Cloud Function for stale `lead` docs (>24h, `reminderSent=false`)
 
+### Current Email Bugs To Fix Before Expanding CRM
+- [x] Fix deployed email runtime dependencies so automatic transactional emails can render/send from App Hosting
+- [x] Fix CRM template preview runtime path so previews can render templates
+- [x] Fix CRM resend runtime path and return real send/render errors to the UI
+- [x] CRM custom/free-form email sends successfully
+- [x] Confirm root cause: App Hosting standalone bundles were missing `@react-email/render` / `prettier` / shared email runtime deps
+- [x] Add safer JSON error responses + server logging around preview/resend/status-email routes
+- [ ] Deploy the email runtime fix to Firebase App Hosting and verify live preview/resend/auto-send
+
 ## Phase 7: Customer Issuance Tracker
 - [x] Public route `/track/[token]` — looks up by `trackerToken`, returns sanitized status + timeline
 - [x] 4-step progress bar driven from `status` + timestamps
@@ -166,3 +175,50 @@ Working tracker for Allianz Shield Plus. Spec lives in [Claude.md](./Claude.md);
 - [ ] Verify the auto-deploy from Phase 1 still rolls out cleanly to both custom domains (no manual deploy step needed)
 - [ ] End-to-end test with a real Senang Pay production/live transaction
 - [ ] End-to-end test full journey: lead → reminder email → paid → issued → all four emails delivered + webhook events recorded
+
+## Phase 10: CRM Growth Features
+
+### CRM Navigation
+- [ ] Restructure CRM into 3 top-level tabs:
+  - [ ] Applicants
+  - [ ] Email Marketing
+  - [ ] Promo Codes
+- [ ] Keep existing applicant list/detail flow under Applicants
+
+### Manual Status Management
+- [ ] Let admins manually change lead/application status from CRM beyond only `paid → issued`
+- [ ] Every manual status change writes an `events` subcollection row, visible in Event timeline like notes
+- [ ] Require optional admin note/reason for manual status changes
+- [ ] Decide whether manual status changes should trigger transactional emails by default, require a checkbox, or never auto-send
+- [ ] Add guardrails so manual payment status changes cannot accidentally duplicate payment callback events
+
+### Payment Follow-Up Email
+- [ ] Create/repair "complete your payment" email template with live `/payment/retry/{trackerToken}` link
+- [ ] Add CRM button to send payment follow-up email for `lead` / `payment_failed` applications
+- [ ] Include this send in Event timeline as `email_sent`
+- [ ] Prevent sending payment follow-up to already `paid` or `issued` applications
+
+### Email Policy Progress
+- [ ] Add policy/application progress section to every transactional email
+- [ ] Ensure progress reflects statuses: `lead`, `payment_failed`, `paid`, `issued`
+- [ ] Include tracker link in every progress section
+
+### Bulk Email Marketing
+- [ ] Build Email Marketing tab in CRM
+- [ ] Segment recipients by application status (`lead`, `payment_failed`, `paid`, `issued`)
+- [ ] Add filters/search before send: plan, date range, occupation category, paid/unpaid status
+- [ ] Add recipient preview and final confirmation before sending
+- [ ] Add unsubscribe/marketing consent strategy before sending non-transactional email
+- [ ] Add rate limiting / batch sending to avoid Resend throttling
+- [ ] Write bulk campaign docs and per-recipient send events for auditability
+- [ ] Separate transactional emails from marketing emails in code and event naming
+
+### Promo Codes
+- [ ] Add Promo Codes CRM tab
+- [ ] Create Firestore promo code schema: code, discount type, amount/percent, active dates, usage limit, allowed plans/categories, created/updated metadata
+- [ ] Build CRM create/edit/deactivate promo code UI
+- [ ] Add promo code input to web application/payment flow
+- [ ] Validate promo codes server-side in checkout initiation
+- [ ] Store applied promo code and discount amount on application/payment record
+- [ ] Show discount in order summary, checkout payload, CRM detail, and payment amount calculation
+- [ ] Add guardrails for expired/disabled/usage-limited promo codes

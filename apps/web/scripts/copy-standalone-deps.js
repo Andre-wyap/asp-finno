@@ -33,8 +33,13 @@ if (!fs.existsSync(pkgPath)) {
 
 const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
 const runtimeDeps = [];
+const workspaceDependencyDirs = [];
 for (const [name, ver] of Object.entries(pkg.dependencies || {})) {
   if (typeof ver === 'string' && ver.startsWith('file:')) {
+    const workspaceDir = path.resolve(appDir, ver.slice('file:'.length));
+    if (fs.existsSync(path.join(workspaceDir, 'package.json'))) {
+      workspaceDependencyDirs.push({ name, dir: workspaceDir });
+    }
     delete pkg.dependencies[name];
     console.log(`[postbuild] Removed workspace dep: ${name}`);
   } else {
@@ -101,6 +106,10 @@ function copyDep(name) {
 }
 
 queue.push(...runtimeDeps);
+for (const dep of workspaceDependencyDirs) {
+  console.log(`[postbuild] Enqueueing runtime deps from workspace dep: ${dep.name}`);
+  enqueueFromPackageDir(dep.dir);
+}
 while (queue.length) {
   copyDep(queue.shift());
 }

@@ -161,7 +161,17 @@ async function handleCallback(request: Request) {
       from: (applicationData.status as ApplicationStatus) ?? null,
       to: nextStatus as ApplicationStatus,
       writeEvent: (data) => eventsCol.add({ ...data, at: FieldValue.serverTimestamp() }).then(() => undefined),
-    }).catch((err: unknown) => console.error('triggerStatusEmail_failed', err));
+    })
+      .then((result) => {
+        if (!result.ok) {
+          console.error('triggerStatusEmail_failed', {
+            orderId: params.orderId,
+            to: nextStatus,
+            error: result.error,
+          });
+        }
+      })
+      .catch((err: unknown) => console.error('triggerStatusEmail_failed', err));
   }
 
   return NextResponse.json({ ok: true, orderId: params.orderId, status: providerStatus });

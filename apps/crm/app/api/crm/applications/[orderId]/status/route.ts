@@ -94,7 +94,11 @@ export async function POST(
     from: current,
     to,
     writeEvent: (data) => eventsCol.add({ ...data, at: FieldValue.serverTimestamp() }).then(() => undefined),
-  }).catch((err: unknown) => console.error('triggerStatusEmail_failed', err));
+  })
+    .then((result) => {
+      if (!result.ok) console.error('triggerStatusEmail_failed', { orderId, to, error: result.error });
+    })
+    .catch((err: unknown) => console.error('triggerStatusEmail_failed', err));
 
   return NextResponse.json({ ok: true });
 }
