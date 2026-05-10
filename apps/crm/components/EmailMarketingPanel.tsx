@@ -299,7 +299,7 @@ export function EmailMarketingPanel({
       <section className="rounded-lg bg-surface-container-lowest p-5 shadow-ambient">
         <p className="text-sm font-semibold text-primary">Compose</p>
         <p className="mt-1 text-xs text-on-surface-variant">
-          Use <code>{'{{name}}'}</code> in subject or body to insert the applicant's name.
+          Use <code>{'{{name}}'}</code> in subject or body to insert the applicant&apos;s name.
         </p>
 
         <div className="mt-4 space-y-3">
@@ -359,7 +359,7 @@ export function EmailMarketingPanel({
         <p className="mt-1 flex items-start gap-2 text-xs text-on-surface-variant">
           <AlertCircle size={14} className="mt-0.5 shrink-0" />
           Once sent, emails cannot be recalled. Each send creates a{' '}
-          <code className="ml-1">marketing_email_sent</code> event on the recipient's application.
+          <code className="ml-1">marketing_email_sent</code> event on the recipient&apos;s application.
         </p>
 
         <div className="mt-4">

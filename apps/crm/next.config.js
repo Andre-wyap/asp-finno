@@ -2,7 +2,7 @@
 const nextConfig = {
   output: 'standalone',
   outputFileTracingRoot: __dirname,
-  transpilePackages: ['@asp/shared']
+  transpilePackages: ['@asp/shared', '@asp/pricing']
 };
 
 module.exports = nextConfig;
