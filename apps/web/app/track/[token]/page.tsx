@@ -239,8 +239,16 @@ export default async function TrackPage({
 
         {application.status === 'payment_failed' && (
           <div className="mt-8 rounded-lg border border-red-200 bg-red-50 p-5 text-sm text-red-800">
-            Payment was not completed for this application. Please return to the plan page to retry
-            or contact support if money was deducted.
+            <p>
+              Payment was not completed for this application. You can retry payment or contact
+              support if money was deducted.
+            </p>
+            <Link
+              href={`/payment/retry/${token}`}
+              className="mt-4 inline-flex min-h-10 items-center rounded-full bg-primary px-5 text-sm font-semibold text-on-primary hover:bg-secondary"
+            >
+              Retry payment
+            </Link>
           </div>
         )}
 

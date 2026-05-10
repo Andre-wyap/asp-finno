@@ -16,6 +16,11 @@ function trackerUrl(trackerToken: string): string {
   return `${base}/track/${trackerToken}`;
 }
 
+function retryUrl(trackerToken: string): string {
+  const base = process.env.TRACKER_BASE_URL ?? 'https://asp.finnomalaysia.com';
+  return `${base}/payment/retry/${trackerToken}`;
+}
+
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ orderId: string }> }
@@ -37,9 +42,9 @@ export async function POST(
   }
 
   const appData = appDoc.data()!;
-  const tracker = trackerUrl(appData.trackerToken ?? '');
-  const base = process.env.TRACKER_BASE_URL ?? 'https://asp.finnomalaysia.com';
-  const retryUrl = `${base}/track/${orderId}`;
+  const trackerToken = appData.trackerToken ?? '';
+  const tracker = trackerUrl(trackerToken);
+  const retry = retryUrl(trackerToken);
 
   let element: React.ReactElement;
 
@@ -51,7 +56,7 @@ export async function POST(
         planName: overrides.planName ?? appData.plan?.code ?? '',
         premiumAmount: Number(overrides.premiumAmount ?? appData.premium?.amount ?? 0),
         premiumCurrency: appData.premium?.currency ?? 'MYR',
-        paymentUrl: overrides.paymentUrl ?? retryUrl,
+        paymentUrl: overrides.paymentUrl ?? retry,
         trackerUrl: tracker,
       });
       break;
@@ -76,7 +81,7 @@ export async function POST(
         premiumAmount: Number(overrides.premiumAmount ?? appData.premium?.amount ?? 0),
         premiumCurrency: appData.premium?.currency ?? 'MYR',
         failureMessage: overrides.failureMessage ?? appData.payment?.lastMessage,
-        retryUrl: overrides.retryUrl ?? retryUrl,
+        retryUrl: overrides.retryUrl ?? retry,
         trackerUrl: tracker,
       });
       break;

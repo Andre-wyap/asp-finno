@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Manrope, Plus_Jakarta_Sans } from 'next/font/google';
+import { Analytics } from '../components/Analytics';
 import { Navbar } from '../components/Navbar';
 import './globals.css';
 
@@ -54,6 +55,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${manrope.variable} ${plusJakartaSans.variable}`}>
       <body className="font-sans">
+        <Analytics />
         <Navbar />
         {children}
       </body>

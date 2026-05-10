@@ -4,6 +4,7 @@ import { ArrowLeft } from 'lucide-react';
 import { CrmShell } from '../../../components/CrmShell';
 import { StatusActions } from '../../../components/StatusActions';
 import { NoteForm } from '../../../components/NoteForm';
+import { EmailControl } from '../../../components/EmailControl';
 import { verifyAdmin } from '../../../lib/auth';
 import { getDb } from '../../../lib/firebaseAdmin';
 
@@ -238,6 +239,12 @@ export default async function ApplicationDetailPage({ params }: { params: PagePa
 
             {/* Add note */}
             <NoteForm orderId={orderId} />
+
+            <EmailControl
+              orderId={orderId}
+              currentStatus={status}
+              applicantEmail={applicant.email as string | undefined}
+            />
 
             {/* Tracker token */}
             <InfoCard title="Tracker">

@@ -31,7 +31,8 @@ async function getApplicationStatus(orderId: string) {
     const data = snapshot.data();
 
     return {
-      status: data?.status as string | undefined
+      status: data?.status as string | undefined,
+      trackerToken: typeof data?.trackerToken === 'string' ? data.trackerToken : undefined
     };
   } catch (error) {
     console.error('payment_result_lookup_failed', error);
@@ -120,6 +121,14 @@ export default async function PaymentResultPage({
               >
                 <FileText size={17} />
                 Back to home
+              </Link>
+            ) : application?.trackerToken ? (
+              <Link
+                href={`/payment/retry/${application.trackerToken}`}
+                className="flex min-h-11 items-center gap-2 rounded-full bg-primary px-6 text-sm font-semibold text-on-primary hover:bg-secondary"
+              >
+                <RotateCcw size={17} />
+                Retry payment
               </Link>
             ) : (
               <Link

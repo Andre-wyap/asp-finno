@@ -19,7 +19,9 @@ function getDb() {
 
 export const healthCheck = onRequest(
   { region: 'asia-southeast1' },
-  (_request, response) => response.status(200).json({ ok: true, service: 'asp-functions' })
+  (_request, response) => {
+    response.status(200).json({ ok: true, service: 'asp-functions' });
+  }
 );
 
 // Runs hourly — finds leads older than 24h with reminderSent=false and sends reminder email

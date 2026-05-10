@@ -33,9 +33,9 @@ function trackerUrl(trackerToken: string): string {
   return `${base}/track/${trackerToken}`;
 }
 
-function paymentUrl(orderId: string): string {
+function paymentUrl(trackerToken: string): string {
   const base = process.env.TRACKER_BASE_URL ?? 'https://asp.finnomalaysia.com';
-  return `${base}/track/${orderId}`;
+  return `${base}/payment/retry/${trackerToken}`;
 }
 
 export async function triggerStatusEmail({
@@ -72,7 +72,7 @@ export async function triggerStatusEmail({
         premiumAmount: application.premiumAmount,
         premiumCurrency: application.premiumCurrency,
         failureMessage: application.failureMessage,
-        retryUrl: paymentUrl(orderId),
+        retryUrl: paymentUrl(application.trackerToken),
         trackerUrl: tracker,
       });
       break;
@@ -149,7 +149,7 @@ export async function triggerLeadReminderEmail(params: {
 }): Promise<void> {
   const { orderId, application, writeEvent } = params;
   const tracker = trackerUrl(application.trackerToken);
-  const payment = paymentUrl(orderId);
+  const payment = paymentUrl(application.trackerToken);
 
   const subject = `Complete your application — ${application.planName} is waiting (${orderId})`;
   const template = React.createElement(LeadReminder, {

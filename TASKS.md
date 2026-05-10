@@ -35,13 +35,13 @@ Working tracker for Allianz Shield Plus. Spec lives in [Claude.md](./Claude.md);
 
 ### Git & Continuous Deploy (set up early so every commit auto-saves progress)
 - [x] `git init`
-- [ ] Push initial scaffold to a private GitHub repo
-- [ ] Create the Firebase project (`asp-finno`) and provision Firestore in `asia-southeast1`
-- [ ] Create the two App Hosting backends in the Firebase console:
-  - [ ] `web` backend → connect to GitHub repo, **set Root directory = `/apps/web`** (Firebase console field, not the yaml), watch `main`
-  - [ ] `crm` backend → same repo, **Root directory = `/apps/crm`**, watch `main`
-- [ ] Verify a trivial commit triggers a build and lands on the auto-generated `*.web.app` URLs for both backends (custom domains come later in Phase 9)
-- [ ] If the build fails on workspace resolution, confirm npm workspaces is declared at repo root and that `transpilePackages` lists every internal `@asp/*` package each app imports
+- [x] Push initial scaffold to a private GitHub repo
+- [x] Create the Firebase project (`asp-finno`) and provision Firestore (current database location: `nam5`)
+- [x] Create the two App Hosting backends in the Firebase console:
+  - [x] `web` backend → connect to GitHub repo, **set Root directory = `/apps/web`** (Firebase console field, not the yaml), watch `main`
+  - [x] `crm` backend → same repo, **Root directory = `/apps/crm`**, watch `main`
+- [x] Verify a trivial commit triggers a build and lands on the auto-generated App Hosting URLs for both backends (custom domains come later in Phase 9)
+- [x] If the build fails on workspace resolution, confirm npm workspaces is declared at repo root and that `transpilePackages` lists every internal `@asp/*` package each app imports
 - [ ] Add a billing budget alert ($10/month, 50/90/100% thresholds) in GCP Billing
 
 ## Phase 2: Landing Page & Plan Showcase
@@ -89,7 +89,7 @@ Working tracker for Allianz Shield Plus. Spec lives in [Claude.md](./Claude.md);
 - [ ] Test credit card, e-wallet, and FPX flows in sandbox
 
 ## Phase 5: Firestore Backend
-- [ ] (Firebase project + Firestore region were provisioned in Phase 1's CD bootstrap — confirm the region is `asia-southeast1`)
+- [x] Firebase project + Firestore database were provisioned in Phase 1's CD bootstrap (current database location: `nam5`)
 - [x] Wire `firebase-admin` in Route Handlers (no JWT/REST helper needed — App Hosting provides ADC; locally use the emulator or `gcloud auth application-default login`)
 - [x] Implement the `applications/{orderId}` schema (including `pdpaConsent` and `searchKeys`) and the `events` subcollection per `Claude.md §Firestore Schema`
 - [x] Implement `nricHash = HMAC-SHA256(nric, NRIC_HASH_PEPPER)` in `@asp/shared`; never log plaintext NRIC
@@ -109,21 +109,21 @@ Working tracker for Allianz Shield Plus. Spec lives in [Claude.md](./Claude.md);
 
 ## Phase 6: Email Automation (Resend)
 - [ ] Create Resend account; verify sender domain (SPF/DKIM/DMARC) for `asp.finnomalaysia.com`
-- [ ] Author React Email components in `packages/shared/emails`: `LeadReminder.tsx`, `Paid.tsx`, `PaymentFailed.tsx`, `Issued.tsx`
-- [ ] Add `RESEND_API_KEY`, `RESEND_WEBHOOK_SECRET`, `RESEND_FROM_ADDRESS` to Secret Manager and grant access to both backends + functions
-- [ ] Build `lib/email.ts` Resend client in `@asp/shared`
-- [ ] Build central `onStatusChange(application, from, to)` hook — only place a status-driven email is triggered
-- [ ] Wire `onStatusChange` into form submit, Senang Pay callback, and CRM status mutation
-- [ ] Build Resend webhook handler at `/api/webhooks/resend` (Svix signature verify) → write `email_event` rows
+- [x] Author React Email components in `packages/shared/emails`: `LeadReminder.tsx`, `Paid.tsx`, `PaymentFailed.tsx`, `Issued.tsx`
+- [x] Add `RESEND_API_KEY`, `RESEND_WEBHOOK_SECRET`, `RESEND_FROM_ADDRESS` to Secret Manager and grant access to both backends + functions
+- [x] Build `lib/email.ts` Resend client in `@asp/shared`
+- [x] Build central `onStatusChange(application, from, to)` hook — only place a status-driven email is triggered
+- [x] Wire `onStatusChange` into Senang Pay callback and CRM status mutation; lead reminder is handled by the scheduled function
+- [x] Build Resend webhook handler at `/api/webhooks/resend` (Svix signature verify) → write `email_event` rows
 - [ ] Configure the Resend webhook URL in the Resend dashboard:
   - [ ] Initially: `https://<web-backend-id>.web.app/api/webhooks/resend` (use the App Hosting auto-generated URL)
   - [ ] After Phase 9 domain bind: update to `https://asp.finnomalaysia.com/api/webhooks/resend`
-- [ ] Cloud Scheduler job → `leadReminderTick` Cloud Function for stale `lead` docs (>24h, `reminderSent=false`)
+- [x] Cloud Scheduler job → `leadReminderTick` Cloud Function for stale `lead` docs (>24h, `reminderSent=false`)
 
 ## Phase 7: Customer Issuance Tracker
 - [x] Public route `/track/[token]` — looks up by `trackerToken`, returns sanitized status + timeline
 - [x] 4-step progress bar driven from `status` + timestamps
-- [ ] Embed tracker link in every status-change email
+- [x] Embed tracker link in every status-change email
 - [x] Per-IP rate limit on the route to deter scraping
 - [x] Verify the tracker never exposes NRIC, address, or full applicant record
 
@@ -142,24 +142,26 @@ Working tracker for Allianz Shield Plus. Spec lives in [Claude.md](./Claude.md);
 - [x] "Add note" action (writes to events subcollection)
 - [x] CRM email control surface (per `Claude.md §CRM Email Control`):
   - [x] Email timeline (sends + Resend webhook events)
-  - [ ] Template preview (no send) — deferred to Phase 6
-  - [ ] Resend a past transactional email — deferred to Phase 6
-  - [ ] Compose ad-hoc email (template + overrides, or free-form) — deferred to Phase 6
+  - [x] Template preview (no send)
+  - [x] Resend a past transactional email
+  - [x] Compose ad-hoc email (free-form)
 - [x] Per-admin attribution (`ownerAdminId` + actor on every event row)
 
 ## Phase 9: Polish & Launch
 - [ ] Mobile responsive testing
 - [ ] Cross-browser testing
-- [ ] Loading states and error handling
-- [ ] Analytics (GA4 / Meta Pixel)
-- [ ] Privacy policy and T&C pages
-- [ ] PDPA consent checkbox on the form (writes to `pdpaConsent` per Phase 5)
-- [ ] SEO meta tags and Open Graph
-- [ ] Set `runConfig.maxInstances` in both `apphosting.yaml` files (e.g. 5 for `web`, 2 for `crm`) and `runConfig.minInstances: 0`
-- [ ] Bind custom domains in Firebase: `asp.finnomalaysia.com` → `web` backend, `aspadmin.finnomalaysia.com` → `crm` backend
+- [x] Loading states and error handling
+- [x] Analytics wiring placeholders (GA4 / Meta Pixel IDs can be added later)
+- [x] Privacy policy, refund policy, and T&C pages
+- [x] PDPA consent checkbox on the form (writes to `pdpaConsent` per Phase 5)
+- [x] SEO meta tags and Open Graph
+- [x] Set `runConfig.maxInstances` in both `apphosting.yaml` files (e.g. 5 for `web`, 2 for `crm`) and `runConfig.minInstances: 0`
+- [ ] Bind custom domains in Firebase:
+  - [x] `asp.finnomalaysia.com` → `web` backend
+  - [ ] `aspadmin.finnomalaysia.com` → `crm` backend
 - [ ] Add the two CNAME records at the `finnomalaysia.com` DNS provider (set DNS-only / grey cloud if Cloudflare-fronted)
 - [ ] Update Resend webhook URL to `https://asp.finnomalaysia.com/api/webhooks/resend`
-- [ ] Update `TRACKER_BASE_URL` secret to `https://asp.finnomalaysia.com`
+- [x] Update `TRACKER_BASE_URL` secret to `https://asp.finnomalaysia.com`
 - [ ] Update Senang Pay return URL + callback URL in the Senang Pay merchant dashboard to the production hostnames
 - [ ] Verify the auto-deploy from Phase 1 still rolls out cleanly to both custom domains (no manual deploy step needed)
 - [ ] End-to-end test with a real Senang Pay sandbox transaction

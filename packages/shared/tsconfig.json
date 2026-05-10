@@ -2,7 +2,7 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "composite": true,
-    "rootDir": "src"
+    "rootDir": "."
   },
   "include": ["src/**/*.ts", "emails/**/*.tsx"]
 }

@@ -1,4 +1,4 @@
-import { FieldValue, Timestamp } from 'firebase-admin/firestore';
+import { FieldValue } from 'firebase-admin/firestore';
 import { NextResponse } from 'next/server';
 import { getDb } from '../../../../lib/firebaseAdmin';
 import {
@@ -37,11 +37,6 @@ async function paramsFromRequest(request: Request) {
   }
 
   return new URL(request.url).searchParams;
-}
-
-function formatDate(ts: Timestamp | undefined): string {
-  if (!ts) return new Date().toLocaleDateString('en-MY', { year: 'numeric', month: 'long', day: 'numeric' });
-  return ts.toDate().toLocaleDateString('en-MY', { year: 'numeric', month: 'long', day: 'numeric' });
 }
 
 async function handleCallback(request: Request) {
