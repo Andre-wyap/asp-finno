@@ -17,11 +17,11 @@ env:
   - variable: PAYMENT_PROVIDER
     value: doku
   - variable: DOKU_MODE
-    value: sandbox
+    value: production
   - variable: DOKU_CURRENCY
-    value: IDR
+    value: MYR
   - variable: DOKU_AMOUNT_MULTIPLIER
-    value: "1000"
+    value: "1"
   - variable: DOKU_CLIENT_ID
     secret: DOKU_CLIENT_ID
   - variable: DOKU_SECRET_KEY

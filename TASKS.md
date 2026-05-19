@@ -90,7 +90,8 @@ Working tracker for Allianz Shield Plus. Spec lives in [Claude.md](./Claude.md);
 - [x] Add DOKU Checkout sandbox provider behind `PAYMENT_PROVIDER=doku`
 - [x] Add signed DOKU notification endpoint at `/api/doku/notification`
 - [ ] Add DOKU sandbox secrets (`DOKU_CLIENT_ID`, `DOKU_SECRET_KEY`) and run end-to-end sandbox payment simulation
-- [ ] Confirm DOKU production Malaysia supports `DOKU_CURRENCY=MYR`; sandbox currently uses `IDR` with `DOKU_AMOUNT_MULTIPLIER=1000`
+- [x] Switch App Hosting DOKU config to production `MYR` once production credentials are available
+- [ ] Run one small live DOKU production payment and confirm Firestore status/email/CRM updates
 
 ## Phase 5: Firestore Backend
 - [x] Firebase project + Firestore database were provisioned in Phase 1's CD bootstrap (current database location: `nam5`)
