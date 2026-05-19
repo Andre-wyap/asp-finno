@@ -19,9 +19,9 @@ env:
   - variable: DOKU_MODE
     value: sandbox
   - variable: DOKU_CURRENCY
-    value: MYR
+    value: IDR
   - variable: DOKU_AMOUNT_MULTIPLIER
-    value: "1"
+    value: "1000"
   - variable: DOKU_CLIENT_ID
     secret: DOKU_CLIENT_ID
   - variable: DOKU_SECRET_KEY
