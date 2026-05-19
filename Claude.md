@@ -401,14 +401,14 @@ A composite index on `(status, reminderSent, archivedAt, createdAt)` is required
 
 ---
 
-## Senang Pay Integration
+## Payment Integration
 
-Two endpoints on the website backend:
+The website backend can switch providers with `PAYMENT_PROVIDER`:
 
-- `POST /api/checkout/initiate` — generates `orderId`, writes `applied` doc, returns Senang Pay redirect URL with hash signature
-- `POST /api/checkout/callback` — Senang Pay server-to-server. Verifies hash with the merchant secret from Secret Manager. Idempotent on `orderId` + Senang Pay txn id (a duplicate callback must not re-trigger the email)
+- `doku` — current sandbox target. `POST /api/checkout/initiate` creates the application and calls DOKU Checkout server-to-server to get `response.payment.url`. DOKU sends signed payment notifications to `POST /api/doku/notification`, which verifies the DOKU signature, updates `paid` / `payment_failed`, writes idempotent payment events, increments promo usage on successful payment, and triggers status email.
+- `senangpay` — legacy compatible path. `POST /api/checkout/initiate` returns a Senang Pay redirect URL with hash signature, and `POST /api/checkout/callback` / `POST /api/payment/callback` verify the callback hash.
 
-Return URL (browser redirect) goes to `/payment/result?orderId=...` which reads the current status from Firestore and renders success or retry.
+Return URLs go to `/payment/result`, which reads the current status from Firestore and renders success, pending, or retry. Browser redirects are display-only; the server-to-server callback/notification remains the authority for payment status.
 
 ---
 
@@ -432,6 +432,8 @@ Stored in Secret Manager and bound via `apphosting.yaml`:
 |---|---|
 | `SENANGPAY_MERCHANT_ID` | web |
 | `SENANGPAY_SECRET` | web (callback hash verify) |
+| `DOKU_CLIENT_ID` | web |
+| `DOKU_SECRET_KEY` | web (checkout request signing + notification signature verify) |
 | `RESEND_API_KEY` | web, crm, functions |
 | `RESEND_WEBHOOK_SECRET` | web (Svix signature verification on `/api/webhooks/resend`) |
 | `RESEND_FROM_ADDRESS` | web, crm, functions (e.g. `Allianz Shield Plus <noreply@asp.finnomalaysia.com>`) |

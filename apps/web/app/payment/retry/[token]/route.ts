@@ -9,6 +9,8 @@ import {
   generatePaymentHash,
   getSenangPayConfig
 } from '../../../../lib/senangPay';
+import { createDokuCheckoutPayment } from '../../../../lib/doku';
+import { getPaymentProvider } from '../../../../lib/paymentProvider';
 
 type RouteParams = {
   token: string;
@@ -28,6 +30,11 @@ function publicRedirect(path: string) {
 
 function trackerRedirect(token: string) {
   return publicRedirect(`/track/${token}`);
+}
+
+function retryInvoiceNumber(orderId: string) {
+  const suffix = Date.now().toString(36).toUpperCase().slice(-8).padStart(8, '0');
+  return `${orderId}R${suffix}`.slice(0, 30);
 }
 
 export async function GET(
@@ -77,16 +84,49 @@ export async function GET(
   }
 
   const orderId = applicationDoc.id;
-  const { merchantId, secret, paymentBaseUrl } = getSenangPayConfig();
+  const paymentProvider = getPaymentProvider();
   const detail =
     typeof payment.detail === 'string' && payment.detail
       ? payment.detail
       : sanitizeDetail(`Allianz_Shield_Plus_${planNameFromCode(plan.code ?? '') || 'Plan'}_${orderId}`);
-  const hash = generatePaymentHash({ secret, detail, amount, orderId });
+  const senangPayConfig =
+    paymentProvider === 'senangpay' ? getSenangPayConfig() : null;
+  const dokuCheckout =
+    paymentProvider === 'doku'
+      ? await createDokuCheckoutPayment({
+          orderId,
+          invoiceNumber: retryInvoiceNumber(orderId),
+          amount: normalizedAmountNumber,
+          detail,
+          customer: {
+            name: applicant.name,
+            email: applicant.email,
+            phone: applicant.mobile,
+            address: applicant.address
+          },
+          baseUrl: publicBaseUrl()
+        })
+      : null;
+  const senangPayHash = senangPayConfig
+    ? generatePaymentHash({
+        secret: senangPayConfig.secret,
+        detail,
+        amount,
+        orderId
+      })
+    : null;
 
   const updatePayload: Record<string, unknown> = {
     'payment.status': 'retry_started',
-    'payment.merchantId': merchantId,
+    'payment.provider': paymentProvider,
+    'payment.merchantId': senangPayConfig?.merchantId ?? null,
+    'payment.dokuClientId': paymentProvider === 'doku' ? process.env.DOKU_CLIENT_ID : null,
+    'payment.providerInvoiceNumber': dokuCheckout?.invoiceNumber ?? null,
+    'payment.requestId': dokuCheckout?.requestId ?? null,
+    'payment.tokenId': dokuCheckout?.tokenId ?? null,
+    'payment.sessionId': dokuCheckout?.sessionId ?? null,
+    'payment.providerAmount': dokuCheckout?.providerAmount ?? null,
+    'payment.paymentUrl': dokuCheckout?.redirectUrl ?? null,
     updatedAt: FieldValue.serverTimestamp()
   };
 
@@ -108,17 +148,19 @@ export async function GET(
     at: FieldValue.serverTimestamp()
   });
 
-  const redirectUrl = buildPaymentUrl({
-    merchantId,
-    paymentBaseUrl,
-    detail,
-    amount,
-    orderId,
-    hash,
-    name: applicant.name,
-    email: applicant.email,
-    phone: applicant.mobile
-  });
+  const redirectUrl = dokuCheckout
+    ? dokuCheckout.redirectUrl
+    : buildPaymentUrl({
+        merchantId: senangPayConfig!.merchantId,
+        paymentBaseUrl: senangPayConfig!.paymentBaseUrl,
+        detail,
+        amount,
+        orderId,
+        hash: senangPayHash!,
+        name: applicant.name,
+        email: applicant.email,
+        phone: applicant.mobile
+      });
 
   return NextResponse.redirect(redirectUrl);
 }

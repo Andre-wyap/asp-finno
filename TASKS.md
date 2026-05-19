@@ -87,6 +87,10 @@ Working tracker for Allianz Shield Plus. Spec lives in [Claude.md](./Claude.md);
 - [x] Payment success page
 - [x] Payment failure / retry page
 - [ ] Test credit card, e-wallet, and FPX flows with production/live Senang Pay credentials
+- [x] Add DOKU Checkout sandbox provider behind `PAYMENT_PROVIDER=doku`
+- [x] Add signed DOKU notification endpoint at `/api/doku/notification`
+- [ ] Add DOKU sandbox secrets (`DOKU_CLIENT_ID`, `DOKU_SECRET_KEY`) and run end-to-end sandbox payment simulation
+- [ ] Confirm DOKU Malaysia `order.amount` unit in sandbox; adjust `DOKU_AMOUNT_MULTIPLIER` before any production switch
 
 ## Phase 5: Firestore Backend
 - [x] Firebase project + Firestore database were provisioned in Phase 1's CD bootstrap (current database location: `nam5`)

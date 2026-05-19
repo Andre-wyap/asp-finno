@@ -19,6 +19,8 @@ import {
   generatePaymentHash,
   getSenangPayConfig
 } from '../../../../lib/senangPay';
+import { createDokuCheckoutPayment } from '../../../../lib/doku';
+import { getPaymentProvider } from '../../../../lib/paymentProvider';
 
 type CheckoutPayload = {
   applicant?: {
@@ -87,6 +89,13 @@ function setupErrorMessage(error: unknown) {
     };
   }
 
+  if (message.includes('DOKU_CLIENT_ID') || message.includes('DOKU_SECRET_KEY')) {
+    return {
+      message: 'DOKU sandbox credentials are missing in apps/web/.env.local.',
+      status: 503
+    };
+  }
+
   return null;
 }
 
@@ -115,6 +124,10 @@ function getUnderwritingAssessment(applicant: NonNullable<CheckoutPayload['appli
     flag: reasons.length > 0,
     reasons
   };
+}
+
+function publicBaseUrl() {
+  return process.env.TRACKER_BASE_URL ?? 'https://asp.finnomalaysia.com';
 }
 
 function validatePayload(payload: CheckoutPayload) {
@@ -232,7 +245,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const { merchantId, secret, paymentBaseUrl } = getSenangPayConfig();
+    const paymentProvider = getPaymentProvider();
     const db = getDb();
     const orderId = generateOrderId();
     const sst = Math.round(validated.premium * 0.08);
@@ -270,10 +283,34 @@ export async function POST(request: Request) {
     const totalPayable = Math.max(0, subtotal - (appliedPromo?.discountAmount ?? 0));
     const amount = formatAmount(totalPayable);
     const detail = sanitizeDetail(`Allianz_Shield_Plus_${validated.plan.name}_${orderId}`);
-    const hash = generatePaymentHash({ secret, detail, amount, orderId });
     const trackerToken = crypto.randomUUID();
     const nricHashPepper = getNricHashPepper();
     const underwriting = getUnderwritingAssessment(validated.applicant);
+    const senangPayConfig =
+      paymentProvider === 'senangpay' ? getSenangPayConfig() : null;
+    const dokuCheckout =
+      paymentProvider === 'doku'
+        ? await createDokuCheckoutPayment({
+            orderId,
+            amount: totalPayable,
+            detail,
+            customer: {
+              name: validated.applicant.name?.trim() ?? '',
+              email: validated.applicant.email?.trim().toLowerCase() ?? '',
+              phone: validated.mobile,
+              address: validated.applicant.address?.trim()
+            },
+            baseUrl: publicBaseUrl()
+          })
+        : null;
+    const senangPayHash = senangPayConfig
+      ? generatePaymentHash({
+          secret: senangPayConfig.secret,
+          detail,
+          amount,
+          orderId
+        })
+      : null;
 
     await db.collection('applications').doc(orderId).set({
       status: 'applied',
@@ -327,14 +364,23 @@ export async function POST(request: Request) {
         emailLower: validated.applicant.email?.trim().toLowerCase()
       },
       payment: {
-        provider: 'senangpay',
+        provider: paymentProvider,
         status: 'initiated',
         amount,
+        currency: 'MYR',
         detail,
-        merchantId,
+        merchantId: senangPayConfig?.merchantId ?? null,
+        dokuClientId: paymentProvider === 'doku' ? process.env.DOKU_CLIENT_ID : null,
+        providerInvoiceNumber: dokuCheckout?.invoiceNumber ?? null,
+        requestId: dokuCheckout?.requestId ?? null,
+        tokenId: dokuCheckout?.tokenId ?? null,
+        sessionId: dokuCheckout?.sessionId ?? null,
+        providerAmount: dokuCheckout?.providerAmount ?? null,
+        paymentUrl: dokuCheckout?.redirectUrl ?? null,
         transactionId: null,
         lastMessage: null,
-        hashVerifiedAt: null
+        hashVerifiedAt: null,
+        signatureVerifiedAt: null
       },
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
@@ -382,17 +428,19 @@ export async function POST(request: Request) {
       });
     }
 
-    const redirectUrl = buildPaymentUrl({
-      merchantId,
-      paymentBaseUrl,
-      detail,
-      amount,
-      orderId,
-      hash,
-      name: validated.applicant.name?.trim() ?? '',
-      email: validated.applicant.email?.trim() ?? '',
-      phone: validated.mobile
-    });
+    const redirectUrl = dokuCheckout
+      ? dokuCheckout.redirectUrl
+      : buildPaymentUrl({
+          merchantId: senangPayConfig!.merchantId,
+          paymentBaseUrl: senangPayConfig!.paymentBaseUrl,
+          detail,
+          amount,
+          orderId,
+          hash: senangPayHash!,
+          name: validated.applicant.name?.trim() ?? '',
+          email: validated.applicant.email?.trim() ?? '',
+          phone: validated.mobile
+        });
 
     return NextResponse.json({ orderId, redirectUrl });
   } catch (error) {

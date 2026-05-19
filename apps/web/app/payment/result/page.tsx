@@ -55,6 +55,44 @@ export default async function PaymentResultPage({
   searchParams: Promise<PaymentResultSearchParams>;
 }) {
   const rawParams = await searchParams;
+  const provider = first(rawParams.provider);
+  const dokuOrderId =
+    first(rawParams.orderId) ?? first(rawParams.order_id) ?? first(rawParams.invoice_number);
+
+  if (provider === 'doku' || (dokuOrderId && !first(rawParams.status_id))) {
+    const application = dokuOrderId ? await getApplicationStatus(dokuOrderId) : null;
+    const status = application?.status ?? 'applied';
+    const isSuccess = status === 'paid' || status === 'issued';
+    const isPending = status === 'applied' || status === 'lead';
+    const Icon = isSuccess ? CheckCircle2 : isPending ? Clock : AlertCircle;
+    const title = isSuccess
+      ? 'Payment received'
+      : isPending
+        ? 'Payment pending'
+        : 'Payment unsuccessful';
+    const message = isSuccess
+      ? 'Your payment has been received. We will process your policy shortly.'
+      : isPending
+        ? 'We are waiting for the payment provider confirmation. You can refresh this page in a moment.'
+        : 'Payment was not completed. You can retry payment or contact support with your order ID.';
+
+    return (
+      <PaymentResultView
+        icon={Icon}
+        isSuccess={isSuccess}
+        isPending={isPending}
+        title={title}
+        message={message}
+        orderId={dokuOrderId ?? 'Unavailable'}
+        transactionId="Unavailable"
+        currentStatus={STATUS_LABELS[status] ?? status}
+        verificationLabel="DOKU notification"
+        verificationValue="Server verified"
+        trackerToken={application?.trackerToken}
+      />
+    );
+  }
+
   const params = parseSenangPayParams(
     new URLSearchParams({
       status_id: first(rawParams.status_id) ?? '',
@@ -89,6 +127,48 @@ export default async function PaymentResultPage({
     : 'We could not verify the payment response. Please contact support with your order ID.';
 
   return (
+    <PaymentResultView
+      icon={Icon}
+      isSuccess={isSuccess}
+      isPending={isPending}
+      title={title}
+      message={message}
+      orderId={params.orderId || 'Unavailable'}
+      transactionId={params.transactionId || 'Unavailable'}
+      currentStatus={STATUS_LABELS[application?.status ?? ''] ?? providerStatus}
+      verificationLabel="Hash verification"
+      verificationValue={hashVerified ? 'Verified' : 'Failed'}
+      trackerToken={application?.trackerToken}
+    />
+  );
+}
+
+function PaymentResultView({
+  icon: Icon,
+  isSuccess,
+  isPending,
+  title,
+  message,
+  orderId,
+  transactionId,
+  currentStatus,
+  verificationLabel,
+  verificationValue,
+  trackerToken
+}: {
+  icon: typeof CheckCircle2;
+  isSuccess: boolean;
+  isPending: boolean;
+  title: string;
+  message: string;
+  orderId: string;
+  transactionId: string;
+  currentStatus: string;
+  verificationLabel: string;
+  verificationValue: string;
+  trackerToken?: string;
+}) {
+  return (
     <main className="min-h-screen bg-surface px-4 py-16 text-on-surface sm:px-6 lg:px-8">
       <div className="mx-auto max-w-3xl">
         <div className="rounded-lg bg-surface-container-lowest p-8 shadow-ambient">
@@ -110,16 +190,10 @@ export default async function PaymentResultPage({
           <p className="mt-3 text-on-surface-variant">{message}</p>
 
           <div className="mt-8 grid gap-3 rounded-lg bg-surface-container-low p-5 text-sm">
-            <ResultRow label="Order ID" value={params.orderId || 'Unavailable'} />
-            <ResultRow
-              label="Transaction ID"
-              value={params.transactionId || 'Unavailable'}
-            />
-            <ResultRow
-              label="Current status"
-              value={STATUS_LABELS[application?.status ?? ''] ?? providerStatus}
-            />
-            <ResultRow label="Hash verification" value={hashVerified ? 'Verified' : 'Failed'} />
+            <ResultRow label="Order ID" value={orderId} />
+            <ResultRow label="Transaction ID" value={transactionId} />
+            <ResultRow label="Current status" value={currentStatus} />
+            <ResultRow label={verificationLabel} value={verificationValue} />
           </div>
 
           <div className="mt-8 flex flex-wrap gap-3">
@@ -131,9 +205,9 @@ export default async function PaymentResultPage({
                 <FileText size={17} />
                 Back to home
               </Link>
-            ) : application?.trackerToken ? (
+            ) : trackerToken ? (
               <Link
-                href={`/payment/retry/${application.trackerToken}`}
+                href={`/payment/retry/${trackerToken}`}
                 className="flex min-h-11 items-center gap-2 rounded-full bg-primary px-6 text-sm font-semibold text-on-primary hover:bg-secondary"
               >
                 <RotateCcw size={17} />
