@@ -5,8 +5,12 @@ import Link from 'next/link';
 import { useState } from 'react';
 import {
   ageBandLabels,
+  getAgeBandForAge,
+  getAgeFromDob,
+  getAnnualPremium,
   getPremiumBreakdown,
   getRoundedPayableAmount,
+  LAST_ENTRY_AGE,
   occupationCategoryLabels,
   type AgeBand,
   type OccupationCategory,
@@ -114,6 +118,8 @@ const EMPTY_NOMINEE: NomineeForm = {
   relationship: '',
   nationality: 'Malaysian',
 };
+
+const LAST_ENTRY_AGE_MESSAGE = `The last entry age for Allianz Shield Plus is ${LAST_ENTRY_AGE} years old.`;
 
 async function readCheckoutResponse(response: Response) {
   const contentType = response.headers.get('content-type') ?? '';
@@ -585,6 +591,7 @@ export function ApplicationForm({ plan, ageBand, occupationCategory, premium }: 
   function handleNext() {
     if (step === 1) {
       const errs = validateApplicant(applicant);
+      if (isOverEntryAge) errs.nric = LAST_ENTRY_AGE_MESSAGE;
       if (Object.keys(errs).length > 0) { setErrors(errs); return; }
     }
     if (step === 2) {
@@ -620,7 +627,7 @@ export function ApplicationForm({ plan, ageBand, occupationCategory, premium }: 
           nominees,
           plan: {
             code: plan.code,
-            ageBand,
+            ageBand: effectiveAgeBand,
             occupationCategory,
           },
           pdpaConsent: {
@@ -647,6 +654,18 @@ export function ApplicationForm({ plan, ageBand, occupationCategory, premium }: 
       setIsSubmitting(false);
     }
   }
+
+  // ---- Age band derived from the applicant's IC ----
+  // The age band passed from the plan selector is only a hint. The IC the
+  // applicant types is authoritative: re-derive the band (and premium) from it,
+  // and block applicants past the last entry age.
+  const derivedAge = applicant.dob ? getAgeFromDob(applicant.dob) : null;
+  const derivedAgeBand = derivedAge !== null ? getAgeBandForAge(derivedAge) : null;
+  const isOverEntryAge = derivedAge !== null && derivedAgeBand === null;
+  const effectiveAgeBand: AgeBand = derivedAgeBand ?? ageBand;
+  const effectivePremium =
+    getAnnualPremium(plan.code, effectiveAgeBand, occupationCategory) ?? premium;
+  const ageBandReprice = derivedAgeBand !== null && derivedAgeBand !== ageBand;
 
   // ---- Render ----
 
@@ -700,7 +719,10 @@ export function ApplicationForm({ plan, ageBand, occupationCategory, premium }: 
 
                     {/* NRIC + DOB */}
                     <div className="grid gap-5 sm:grid-cols-2">
-                      <FormField label="Malaysian IC Number" error={errors.nric}>
+                      <FormField
+                        label="Malaysian IC Number"
+                        error={isOverEntryAge ? LAST_ENTRY_AGE_MESSAGE : errors.nric}
+                      >
                         <input
                           type="text"
                           value={applicant.nric}
@@ -709,6 +731,12 @@ export function ApplicationForm({ plan, ageBand, occupationCategory, premium }: 
                           inputMode="numeric"
                           className={inputCls}
                         />
+                        {ageBandReprice && !isOverEntryAge && (
+                          <p className="mt-1.5 text-xs font-medium text-secondary">
+                            Premium updated to the {ageBandLabels[effectiveAgeBand]}{' '}
+                            rate based on your IC.
+                          </p>
+                        )}
                       </FormField>
                       <FormField label="Date of Birth">
                         <input
@@ -1050,7 +1078,8 @@ export function ApplicationForm({ plan, ageBand, occupationCategory, premium }: 
                 <button
                   type="button"
                   onClick={handleNext}
-                  className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-full bg-primary px-8 text-sm font-semibold text-on-primary transition hover:bg-secondary sm:flex-initial"
+                  disabled={step === 1 && isOverEntryAge}
+                  className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-full bg-primary px-8 text-sm font-semibold text-on-primary transition hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-60 sm:flex-initial"
                 >
                   Continue
                   <ArrowRight size={15} />
@@ -1076,9 +1105,9 @@ export function ApplicationForm({ plan, ageBand, occupationCategory, premium }: 
           <aside className="order-first lg:order-none lg:sticky lg:top-24">
             <OrderSummary
               plan={plan}
-              ageBand={ageBand}
+              ageBand={effectiveAgeBand}
               occupationCategory={occupationCategory}
-              premium={premium}
+              premium={effectivePremium}
               appliedPromo={appliedPromo}
               onApplyPromo={setAppliedPromo}
               onRemovePromo={() => setAppliedPromo(null)}

@@ -2,9 +2,12 @@ import { FieldValue } from 'firebase-admin/firestore';
 import crypto from 'node:crypto';
 import { NextResponse } from 'next/server';
 import {
+  getAgeBandForAge,
+  getAgeFromDob,
   getAnnualPremium,
   getPremiumBreakdown,
   getRoundedPayableAmount,
+  LAST_ENTRY_AGE,
   plans,
   type AgeBand,
   type OccupationCategory
@@ -171,21 +174,33 @@ function validatePayload(payload: CheckoutPayload) {
     return { error: 'Invalid plan' };
   }
 
-  const premium = getAnnualPremium(
-    plan.code,
-    selectedPlan.ageBand,
-    selectedPlan.occupationCategory
-  );
-
-  if (premium === null) {
-    return { error: 'Selected plan is not available for this occupation category' };
-  }
-
   const applicantNric = applicant.nric ?? '';
   const parsedNric = parseNric(applicantNric);
 
   if (!validateNric(applicantNric) || !parsedNric) {
     return { error: 'Applicant NRIC is invalid' };
+  }
+
+  // The IC is the authoritative source for the age band: re-derive it from the
+  // parsed date of birth so a tampered payload cannot price against a cheaper
+  // band, and reject applicants past the last entry age (65).
+  const applicantAge = getAgeFromDob(parsedNric.dob);
+  const ageBand = applicantAge !== null ? getAgeBandForAge(applicantAge) : null;
+
+  if (ageBand === null) {
+    return {
+      error: `The last entry age for Allianz Shield Plus is ${LAST_ENTRY_AGE} years old.`
+    };
+  }
+
+  const premium = getAnnualPremium(
+    plan.code,
+    ageBand,
+    selectedPlan.occupationCategory
+  );
+
+  if (premium === null) {
+    return { error: 'Selected plan is not available for this occupation category' };
   }
 
   const mobile = normalizeMobile(applicant.mobile ?? '');
@@ -244,6 +259,7 @@ function validatePayload(payload: CheckoutPayload) {
     applicant,
     nominees,
     plan,
+    ageBand,
     premium,
     mobile,
     parsedNric,
@@ -361,7 +377,7 @@ export async function POST(request: Request) {
       })),
       plan: {
         code: validated.plan.code,
-        ageBand: payload.plan?.ageBand,
+        ageBand: validated.ageBand,
         occupationCategory: payload.plan?.occupationCategory
       },
       premium: {

@@ -50,6 +50,7 @@ Working tracker for Allianz Shield Plus. Spec lives in [Claude.md](./Claude.md);
   - [x] Highlight "Renewable up to 80 years old" as a key selling point
 - [x] Age selector (Below 50 / 51–65) — segmented toggle per Design.md
 - [x] Occupation selector (Category A / Category B) with info icon tooltip
+- [x] Add visible "Age band" / "Occupation category" labels above the showcase selector tabs
 - [x] Occupation categories modal (list from brochure)
 - [x] Plan cards grid (Plans 1–9 only)
   - [x] Plan name, sum assured, medical expenses, renewal bonus, dynamic price
@@ -75,6 +76,14 @@ Working tracker for Allianz Shield Plus. Spec lives in [Claude.md](./Claude.md);
   - [x] Add/Remove nominee buttons
 - [x] Client-side validation
 - [x] Order summary sidebar (selected plan + price)
+
+### IC-Derived Age Band & Last Entry Age
+- [x] Add `LAST_ENTRY_AGE`, `getAgeFromDob`, and `getAgeBandForAge` helpers to `@asp/pricing`
+- [x] Re-derive the applicant's age band from the IC date of birth on the apply form, overriding the band passed from the plan selector
+- [x] Re-price the premium and order summary to the IC-derived age band, and send the corrected `ageBand` in the checkout payload
+- [x] Show a repricing notice under the IC field when the IC-derived band differs from the selector's band
+- [x] Block applicants past the last entry age (65): show "The last entry age for Allianz Shield Plus is 65 years old." and disable Continue on the applicant step
+- [x] Re-derive and enforce the age band server-side from the IC `dob` in `/api/checkout/initiate` (defense-in-depth against a tampered payload)
 
 ## Phase 4: Payment Integration (Senang Pay)
 - [x] Set up Senang Pay merchant account & API keys

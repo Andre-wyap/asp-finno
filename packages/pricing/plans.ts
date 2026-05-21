@@ -228,7 +228,7 @@ export function getPremiumBreakdown(annualPlanPrice: number) {
 }
 
 export function getAnnualPremium(
-  planCode: PlanCode,
+  planCode: string,
   ageBand: AgeBand,
   occupationCategory: OccupationCategory
 ) {
@@ -264,4 +264,45 @@ export function getPlanByCode(code: string) {
 
 export function planNameFromCode(code: string): string {
   return getPlanByCode(code)?.name ?? code;
+}
+
+// ---------------------------------------------------------------------------
+// Age / age-band derivation
+// ---------------------------------------------------------------------------
+
+/** Last entry age for Allianz Shield Plus. Applicants older than this cannot buy online. */
+export const LAST_ENTRY_AGE = 65;
+
+/**
+ * Computes age in completed years from an ISO `YYYY-MM-DD` date of birth.
+ * Returns null when the string is not a parseable ISO date.
+ */
+export function getAgeFromDob(
+  dob: string,
+  asOf: Date = new Date()
+): number | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dob);
+  if (!match) return null;
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+
+  let age = asOf.getFullYear() - year;
+  const hadBirthdayThisYear =
+    asOf.getMonth() + 1 > month ||
+    (asOf.getMonth() + 1 === month && asOf.getDate() >= day);
+
+  if (!hadBirthdayThisYear) age -= 1;
+  return age;
+}
+
+/**
+ * Maps an age to its pricing age band, or null when the applicant is past the
+ * last entry age (65) and therefore cannot be sold a plan online.
+ */
+export function getAgeBandForAge(age: number): AgeBand | null {
+  if (age <= 50) return 'age_50_and_below';
+  if (age <= LAST_ENTRY_AGE) return 'age_51_to_65';
+  return null;
 }

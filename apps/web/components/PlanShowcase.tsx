@@ -61,47 +61,57 @@ export function PlanShowcase() {
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
-              <div className="rounded-full bg-surface-container-high p-1">
-                {(['age_50_and_below', 'age_51_to_65'] as const).map((option) => (
-                  <button
-                    key={option}
-                    type="button"
-                    onClick={() => setAgeBand(option)}
-                    className={`min-h-11 w-1/2 rounded-full px-4 text-sm font-semibold transition ${
-                      ageBand === option
-                        ? 'bg-primary text-on-primary shadow-ambient'
-                        : 'text-on-surface-variant hover:bg-primary-fixed/30'
-                    }`}
-                  >
-                    {option === 'age_50_and_below' ? 'Below 50' : '51–65'}
-                  </button>
-                ))}
+              <div>
+                <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-on-surface-variant">
+                  Age band
+                </p>
+                <div className="rounded-full bg-surface-container-high p-1">
+                  {(['age_50_and_below', 'age_51_to_65'] as const).map((option) => (
+                    <button
+                      key={option}
+                      type="button"
+                      onClick={() => setAgeBand(option)}
+                      className={`min-h-11 w-1/2 rounded-full px-4 text-sm font-semibold transition ${
+                        ageBand === option
+                          ? 'bg-primary text-on-primary shadow-ambient'
+                          : 'text-on-surface-variant hover:bg-primary-fixed/30'
+                      }`}
+                    >
+                      {option === 'age_50_and_below' ? 'Below 50' : '51–65'}
+                    </button>
+                  ))}
+                </div>
               </div>
 
-              <div className="flex items-center gap-2 rounded-full bg-surface-container-high p-1">
-                {(['A', 'B'] as const).map((option) => (
+              <div>
+                <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-on-surface-variant">
+                  Occupation category
+                </p>
+                <div className="flex items-center gap-2 rounded-full bg-surface-container-high p-1">
+                  {(['A', 'B'] as const).map((option) => (
+                    <button
+                      key={option}
+                      type="button"
+                      onClick={() => setOccupationCategory(option)}
+                      className={`min-h-11 flex-1 rounded-full px-4 text-sm font-semibold transition ${
+                        occupationCategory === option
+                          ? 'bg-primary text-on-primary shadow-ambient'
+                          : 'text-on-surface-variant hover:bg-primary-fixed/30'
+                      }`}
+                    >
+                      Cat {option}
+                    </button>
+                  ))}
                   <button
-                    key={option}
                     type="button"
-                    onClick={() => setOccupationCategory(option)}
-                    className={`min-h-11 flex-1 rounded-full px-4 text-sm font-semibold transition ${
-                      occupationCategory === option
-                        ? 'bg-primary text-on-primary shadow-ambient'
-                        : 'text-on-surface-variant hover:bg-primary-fixed/30'
-                    }`}
+                    onClick={() => setIsOccupationModalOpen(true)}
+                    className="flex size-11 items-center justify-center rounded-full text-primary hover:bg-primary-fixed/40"
+                    aria-label="View occupation categories"
+                    title="View occupation categories"
                   >
-                    Cat {option}
+                    <Info size={18} />
                   </button>
-                ))}
-                <button
-                  type="button"
-                  onClick={() => setIsOccupationModalOpen(true)}
-                  className="flex size-11 items-center justify-center rounded-full text-primary hover:bg-primary-fixed/40"
-                  aria-label="View occupation categories"
-                  title="View occupation categories"
-                >
-                  <Info size={18} />
-                </button>
+                </div>
               </div>
             </div>
           </div>

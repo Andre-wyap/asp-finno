@@ -168,6 +168,8 @@ The normalization helper lives in `@asp/shared/src/mobile.ts` so both the form (
 
 4. **Plan availability:** Only Plans 1–9 are sold online; Plan 10 requires underwriting. For Occupation Category B, only Plans 1–5 are available for online purchase. When Category B is selected, hide Plans 6–9 and show the remark: "Category B is only available to buy Plans 1 to 5."
 
+5. **IC-derived age band at checkout:** the age band chosen in the plan showcase is only a hint carried via the apply URL. When the applicant enters their IC on the apply form, the date of birth — and therefore the age band — is derived from the IC and **overrides** the showcase selection. The premium, the order summary, and the `ageBand` sent in the checkout payload all re-price to the IC-derived band, with a notice shown under the IC field when the band changes. If the IC shows the applicant is older than the last entry age (65), the form shows "The last entry age for Allianz Shield Plus is 65 years old." and blocks progress to payment. `POST /api/checkout/initiate` independently re-derives the age band from the applicant's IC `dob` (never trusting the client-supplied band) for both pricing and the stored `plan.ageBand`, and rejects over-65 applications — so a tampered payload cannot price against a cheaper band. Helpers `LAST_ENTRY_AGE`, `getAgeFromDob`, and `getAgeBandForAge` live in `@asp/pricing`.
+
 ## Plan Cards
 
 1. Plan name (e.g. Plan 1, Plan 2, …)
