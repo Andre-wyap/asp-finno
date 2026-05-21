@@ -93,6 +93,16 @@ Working tracker for Allianz Shield Plus. Spec lives in [Claude.md](./Claude.md);
 - [x] Switch App Hosting DOKU config to production `MYR` once production credentials are available
 - [ ] Run one small live DOKU production payment and confirm Firestore status/email/CRM updates
 
+### Runtime Payment Provider Toggle
+- [x] Create a Firestore runtime config doc, e.g. `settings/payment`, with `activeProvider: "doku" | "senangpay"`, `updatedAt`, and `updatedBy`
+- [x] Update web payment provider resolution so checkout reads Firestore first and uses `PAYMENT_PROVIDER` only as a fallback/default
+- [x] Add a protected CRM API endpoint, e.g. `POST /api/crm/settings/payment-provider`, that lets admins switch between DOKU and Senang Pay
+- [x] Add a CRM payment settings control showing the current provider with a DOKU / Senang Pay toggle and confirmation before switching
+- [x] Write a PDPA-safe `activityLogs` row whenever an admin changes the active payment provider
+- [x] Ensure checkout initiation and payment retry both use the same runtime provider resolution
+- [ ] Add tests or verification coverage for CRM authorization, provider switching, and checkout using the Firestore provider setting
+- [x] Document that payment provider selection is runtime-configured in Firestore, with env vars/secrets still required for each enabled provider
+
 ## Phase 5: Firestore Backend
 - [x] Firebase project + Firestore database were provisioned in Phase 1's CD bootstrap (current database location: `nam5`)
 - [x] Wire `firebase-admin` in Route Handlers (no JWT/REST helper needed — App Hosting provides ADC; locally use the emulator or `gcloud auth application-default login`)
@@ -106,6 +116,18 @@ Working tracker for Allianz Shield Plus. Spec lives in [Claude.md](./Claude.md);
 - [x] Underwriting flag logic
 - [x] Lock down Firestore security rules to deny all client access (rules in `Claude.md §Auth & Access Control`)
 - [x] Define `firestore.indexes.json` with the composite index on `(status, reminderSent, createdAt)` for the lead-reminder query
+
+### Applicant Data Capture Updates
+- [x] Update shared Malaysian mobile normalization so any accepted input variation stores/outputs canonical `601XXXXXXXX` without a leading `+`
+- [x] Keep validation strict enough to reject non-Malaysian mobile numbers and invalid `601...` sequences
+- [x] Update the web application form mobile blur/validation so the visible field normalizes to `601XXXXXXXX`
+- [x] Update checkout payload validation and Firestore writes so `applicant.mobile` is always stored in canonical `601XXXXXXXX` format
+- [x] Confirm both DOKU and Senang Pay payment payloads receive the canonical phone format expected by their APIs
+- [x] Add `annualIncome` to the web application form applicant state and checkout payload
+- [x] Add an annual income input to the applicant form with MYR numeric validation
+- [x] Store `applicant.annualIncome` on new `applications/{orderId}` documents
+- [x] Show annual income in the CRM application detail Applicant section
+- [ ] Add tests or verification coverage for common mobile inputs (`012...`, `601...`, `+601...`, spaced/dashed values) and annual income persistence
 
 ### Cloud Functions scaffold (needed before Phase 6's reminder job)
 - [x] Create `/functions` workspace package with its own `package.json`, `firebase-functions` + `firebase-admin` deps, and TypeScript config

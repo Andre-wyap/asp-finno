@@ -80,6 +80,7 @@ interface ApplicantForm {
   mobile: string;
   address: string;
   occupation: string;
+  annualIncome: string;
   smoker: boolean;
 }
 
@@ -101,6 +102,7 @@ const INITIAL_APPLICANT: ApplicantForm = {
   mobile: '',
   address: '',
   occupation: '',
+  annualIncome: '',
   smoker: false,
 };
 
@@ -152,6 +154,10 @@ function validateApplicant(a: ApplicantForm): FormErrors {
 
   if (!a.occupation)
     errors.occupation = 'Please select your occupation';
+
+  const annualIncome = Number(a.annualIncome.replace(/,/g, ''));
+  if (!a.annualIncome.trim() || !Number.isFinite(annualIncome) || annualIncome <= 0)
+    errors.annualIncome = 'Please enter your annual income';
 
   return errors;
 }
@@ -513,6 +519,11 @@ export function ApplicationForm({ plan, ageBand, occupationCategory, premium }: 
     }
   }
 
+  function handleAnnualIncomeChange(raw: string) {
+    const value = raw.replace(/[^\d,]/g, '');
+    setField('annualIncome', value);
+  }
+
   // ---- Nominee handlers ----
 
   function addNominee() {
@@ -738,6 +749,17 @@ export function ApplicationForm({ plan, ageBand, occupationCategory, premium }: 
                       </FormField>
                     </div>
 
+                    <FormField label="Annual Income (MYR)" error={errors.annualIncome}>
+                      <input
+                        type="text"
+                        value={applicant.annualIncome}
+                        onChange={(e) => handleAnnualIncomeChange(e.target.value)}
+                        placeholder="e.g. 60000"
+                        inputMode="numeric"
+                        className={inputCls}
+                      />
+                    </FormField>
+
                     {/* Address */}
                     <FormField label="Home Address" error={errors.address}>
                       <textarea
@@ -911,6 +933,10 @@ export function ApplicationForm({ plan, ageBand, occupationCategory, premium }: 
                         <ReviewRow label="Email" value={applicant.email} />
                         <ReviewRow label="Mobile" value={applicant.mobile} />
                         <ReviewRow label="Occupation" value={applicant.occupation} />
+                        <ReviewRow
+                          label="Annual Income"
+                          value={applicant.annualIncome ? `RM ${applicant.annualIncome}` : ''}
+                        />
                         <ReviewRow
                           label="Smoker"
                           value={applicant.smoker ? 'Yes' : 'No'}

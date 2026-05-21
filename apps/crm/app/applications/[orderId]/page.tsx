@@ -100,6 +100,15 @@ export default async function ApplicationDetailPage({ params }: { params: PagePa
         }).format(n)
       : '—';
 
+  const formatAnnualIncome = (n: unknown) =>
+    typeof n === 'number'
+      ? new Intl.NumberFormat('en-MY', {
+          style: 'currency',
+          currency: 'MYR',
+          maximumFractionDigits: 0
+        }).format(n)
+      : '—';
+
   return (
     <CrmShell>
       <div className="mx-auto max-w-4xl">
@@ -143,6 +152,7 @@ export default async function ApplicationDetailPage({ params }: { params: PagePa
               <Row label="Mobile" value={applicant.mobile as string} />
               <Row label="Address" value={applicant.address as string} />
               <Row label="Occupation" value={applicant.occupation as string} />
+              <Row label="Annual income" value={formatAnnualIncome(applicant.annualIncome)} />
               <Row label="Smoker" value={(applicant.smoker as boolean) ? 'Yes' : 'No'} />
               {(app.underwritingFlag as boolean) && (
                 <div className="col-span-2 mt-1 rounded-lg bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700">

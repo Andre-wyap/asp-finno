@@ -20,7 +20,7 @@ import {
   getSenangPayConfig
 } from '../../../../lib/senangPay';
 import { createDokuCheckoutPayment } from '../../../../lib/doku';
-import { getPaymentProvider } from '../../../../lib/paymentProvider';
+import { getRuntimePaymentProvider } from '../../../../lib/paymentProvider';
 
 type CheckoutPayload = {
   applicant?: {
@@ -32,6 +32,7 @@ type CheckoutPayload = {
     address?: string;
     gender?: string;
     occupation?: string;
+    annualIncome?: string | number;
     smoker?: boolean;
   };
   nominees?: Array<{
@@ -126,6 +127,13 @@ function getUnderwritingAssessment(applicant: NonNullable<CheckoutPayload['appli
   };
 }
 
+function parseAnnualIncome(value: unknown) {
+  const normalized =
+    typeof value === 'string' ? Number(value.replace(/,/g, '')) : Number(value);
+
+  return Number.isFinite(normalized) && normalized > 0 ? normalized : null;
+}
+
 function publicBaseUrl() {
   return process.env.TRACKER_BASE_URL ?? 'https://asp.finnomalaysia.com';
 }
@@ -195,6 +203,12 @@ function validatePayload(payload: CheckoutPayload) {
     return { error: 'Applicant occupation is required' };
   }
 
+  const annualIncome = parseAnnualIncome(applicant.annualIncome);
+
+  if (annualIncome === null) {
+    return { error: 'Applicant annual income is required' };
+  }
+
   const nominees = payload.nominees ?? [];
 
   if (nominees.length > 2) {
@@ -225,7 +239,8 @@ function validatePayload(payload: CheckoutPayload) {
     plan,
     premium,
     mobile,
-    parsedNric
+    parsedNric,
+    annualIncome
   };
 }
 
@@ -245,8 +260,8 @@ export async function POST(request: Request) {
   }
 
   try {
-    const paymentProvider = getPaymentProvider();
     const db = getDb();
+    const paymentProvider = await getRuntimePaymentProvider(db);
     const orderId = generateOrderId();
     const sst = Math.round(validated.premium * 0.08);
     const stampDuty = 10;
@@ -324,6 +339,7 @@ export async function POST(request: Request) {
         address: validated.applicant.address?.trim(),
         gender: validated.parsedNric.gender,
         occupation: validated.applicant.occupation?.trim(),
+        annualIncome: validated.annualIncome,
         smoker: Boolean(validated.applicant.smoker)
       },
       nominees: validated.nominees.map((nominee) => ({

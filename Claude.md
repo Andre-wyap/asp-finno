@@ -403,7 +403,7 @@ A composite index on `(status, reminderSent, archivedAt, createdAt)` is required
 
 ## Payment Integration
 
-The website backend can switch providers with `PAYMENT_PROVIDER`:
+The website backend resolves the active payment provider from Firestore `settings/payment.activeProvider`, with `PAYMENT_PROVIDER` as the fallback/default when the runtime config doc has not been created yet. The CRM Settings page is the admin control surface for switching providers. Secrets/env vars are still required for every provider that may be enabled.
 
 - `doku` — current sandbox target. `POST /api/checkout/initiate` creates the application and calls DOKU Checkout server-to-server to get `response.payment.url`. DOKU sends signed payment notifications to `POST /api/doku/notification`, which verifies the DOKU signature, updates `paid` / `payment_failed`, writes idempotent payment events, increments promo usage on successful payment, and triggers status email.
 - `senangpay` — legacy compatible path. `POST /api/checkout/initiate` returns a Senang Pay redirect URL with hash signature, and `POST /api/checkout/callback` / `POST /api/payment/callback` verify the callback hash.

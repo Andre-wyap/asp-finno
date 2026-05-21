@@ -10,7 +10,7 @@ import {
   getSenangPayConfig
 } from '../../../../lib/senangPay';
 import { createDokuCheckoutPayment } from '../../../../lib/doku';
-import { getPaymentProvider } from '../../../../lib/paymentProvider';
+import { getRuntimePaymentProvider } from '../../../../lib/paymentProvider';
 
 type RouteParams = {
   token: string;
@@ -84,7 +84,7 @@ export async function GET(
   }
 
   const orderId = applicationDoc.id;
-  const paymentProvider = getPaymentProvider();
+  const paymentProvider = await getRuntimePaymentProvider(db);
   const detail =
     typeof payment.detail === 'string' && payment.detail
       ? payment.detail
