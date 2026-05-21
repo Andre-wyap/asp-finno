@@ -7,7 +7,7 @@ import { getDb } from '../../lib/firebaseAdmin';
 type PaymentProvider = 'senangpay' | 'doku';
 
 function fallbackProvider(): PaymentProvider {
-  return process.env.PAYMENT_PROVIDER === 'doku' ? 'doku' : 'senangpay';
+  return process.env.PAYMENT_PROVIDER === 'senangpay' ? 'senangpay' : 'doku';
 }
 
 function isPaymentProvider(value: unknown): value is PaymentProvider {
@@ -27,6 +27,7 @@ export default async function SettingsPage() {
   const activeProvider = isPaymentProvider(configuredProvider)
     ? configuredProvider
     : fallbackProvider();
+  const configured = isPaymentProvider(configuredProvider);
 
   return (
     <CrmShell>
@@ -39,7 +40,10 @@ export default async function SettingsPage() {
         </div>
 
         <div className="mt-6">
-          <PaymentProviderControl initialProvider={activeProvider} />
+          <PaymentProviderControl
+            initialProvider={activeProvider}
+            initialConfigured={configured}
+          />
         </div>
       </div>
     </CrmShell>

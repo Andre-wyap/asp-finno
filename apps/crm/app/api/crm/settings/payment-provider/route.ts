@@ -11,7 +11,7 @@ type PaymentSettingsPayload = {
 };
 
 function fallbackProvider(): PaymentProvider {
-  return process.env.PAYMENT_PROVIDER === 'doku' ? 'doku' : 'senangpay';
+  return process.env.PAYMENT_PROVIDER === 'senangpay' ? 'senangpay' : 'doku';
 }
 
 function isPaymentProvider(value: unknown): value is PaymentProvider {
@@ -22,7 +22,10 @@ async function readActiveProvider(db: FirebaseFirestore.Firestore) {
   const doc = await db.collection('settings').doc('payment').get();
   const provider = doc.data()?.activeProvider;
 
-  return isPaymentProvider(provider) ? provider : fallbackProvider();
+  return {
+    activeProvider: isPaymentProvider(provider) ? provider : fallbackProvider(),
+    configured: isPaymentProvider(provider)
+  };
 }
 
 export async function GET() {
@@ -33,9 +36,9 @@ export async function GET() {
   }
 
   const db = getDb();
-  const activeProvider = await readActiveProvider(db);
+  const settings = await readActiveProvider(db);
 
-  return NextResponse.json({ activeProvider });
+  return NextResponse.json(settings);
 }
 
 export async function POST(request: Request) {
@@ -61,7 +64,7 @@ export async function POST(request: Request) {
   }
 
   const db = getDb();
-  const previousProvider = await readActiveProvider(db);
+  const previousSettings = await readActiveProvider(db);
   const now = FieldValue.serverTimestamp();
 
   await db.collection('settings').doc('payment').set(
@@ -79,7 +82,8 @@ export async function POST(request: Request) {
     orderId: null,
     summary: `Payment provider changed to ${body.activeProvider}`,
     payload: {
-      previousProvider,
+      previousProvider: previousSettings.activeProvider,
+      previousConfigured: previousSettings.configured,
       activeProvider: body.activeProvider
     }
   });

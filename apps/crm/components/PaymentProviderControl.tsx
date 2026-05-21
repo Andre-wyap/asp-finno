@@ -11,16 +11,19 @@ const PROVIDERS: Array<{ value: PaymentProvider; label: string }> = [
 ];
 
 export function PaymentProviderControl({
-  initialProvider
+  initialProvider,
+  initialConfigured
 }: {
   initialProvider: PaymentProvider;
+  initialConfigured: boolean;
 }) {
   const [provider, setProvider] = useState<PaymentProvider>(initialProvider);
+  const [configured, setConfigured] = useState(initialConfigured);
   const [savingProvider, setSavingProvider] = useState<PaymentProvider | null>(null);
   const [error, setError] = useState('');
 
   async function updateProvider(nextProvider: PaymentProvider) {
-    if (nextProvider === provider || savingProvider) return;
+    if ((nextProvider === provider && configured) || savingProvider) return;
 
     const confirmed = window.confirm(
       `Switch checkout payments to ${nextProvider === 'doku' ? 'DOKU' : 'Senang Pay'}?`
@@ -46,6 +49,7 @@ export function PaymentProviderControl({
       }
 
       setProvider(data.activeProvider);
+      setConfigured(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to update payment provider');
     } finally {
