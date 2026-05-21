@@ -1,7 +1,14 @@
 import { FieldValue } from 'firebase-admin/firestore';
 import crypto from 'node:crypto';
 import { NextResponse } from 'next/server';
-import { getAnnualPremium, plans, type AgeBand, type OccupationCategory } from '@asp/pricing';
+import {
+  getAnnualPremium,
+  getPremiumBreakdown,
+  getRoundedPayableAmount,
+  plans,
+  type AgeBand,
+  type OccupationCategory
+} from '@asp/pricing';
 import { normalizeMobile, validateMobile } from '@asp/shared/mobile';
 import { parseNric, validateNric } from '@asp/shared/nric';
 import { hashNric } from '@asp/shared/nricHash';
@@ -263,9 +270,8 @@ export async function POST(request: Request) {
     const db = getDb();
     const paymentProvider = await getRuntimePaymentProvider(db);
     const orderId = generateOrderId();
-    const sst = Math.round(validated.premium * 0.08);
-    const stampDuty = 10;
-    const subtotal = validated.premium + sst + stampDuty;
+    const premiumBreakdown = getPremiumBreakdown(validated.premium);
+    const { serviceTax, stampDuty, subtotal } = premiumBreakdown;
 
     let appliedPromo: {
       code: string;
@@ -295,7 +301,11 @@ export async function POST(request: Request) {
       };
     }
 
-    const totalPayable = Math.max(0, subtotal - (appliedPromo?.discountAmount ?? 0));
+    const payableBreakdown = getRoundedPayableAmount(
+      subtotal,
+      appliedPromo?.discountAmount ?? 0
+    );
+    const totalPayable = payableBreakdown.amount;
     const amount = formatAmount(totalPayable);
     const detail = sanitizeDetail(`Allianz_Shield_Plus_${validated.plan.name}_${orderId}`);
     const trackerToken = crypto.randomUUID();
@@ -356,11 +366,15 @@ export async function POST(request: Request) {
       },
       premium: {
         amount: totalPayable,
-        baseAnnualPremium: validated.premium,
-        serviceTax: sst,
+        annualPlanPrice: premiumBreakdown.annualPlanPrice,
+        baseAnnualPremium: premiumBreakdown.baseAnnualPremium,
+        managedCareOperatingFee: premiumBreakdown.managedCareOperatingFee,
+        serviceTax,
         stampDuty,
         subtotal,
         discountAmount: appliedPromo?.discountAmount ?? 0,
+        totalBeforeRounding: payableBreakdown.totalBeforeRounding,
+        roundingAdjustment: payableBreakdown.roundingAdjustment,
         currency: 'MYR'
       },
       promo: appliedPromo,

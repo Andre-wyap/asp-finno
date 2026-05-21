@@ -1,7 +1,7 @@
 import { FieldValue } from 'firebase-admin/firestore';
 import { NextRequest, NextResponse } from 'next/server';
 import { MIN_PROMO_PAYABLE_AMOUNT } from '@asp/shared/promo';
-import { planNameFromCode } from '@asp/pricing';
+import { getRoundedPayableAmount, planNameFromCode } from '@asp/pricing';
 import { getDb } from '../../../../lib/firebaseAdmin';
 import {
   buildPaymentUrl,
@@ -70,7 +70,15 @@ export async function GET(
   const premium = application.premium ?? {};
   const payment = application.payment ?? {};
   const plan = application.plan ?? {};
-  const amountNumber = typeof premium.amount === 'number' ? premium.amount : Number(payment.amount);
+  const discountAmount =
+    typeof premium.discountAmount === 'number' ? premium.discountAmount : 0;
+  const payableBreakdown =
+    typeof premium.subtotal === 'number'
+      ? getRoundedPayableAmount(premium.subtotal, discountAmount)
+      : null;
+  const storedAmountNumber =
+    typeof premium.amount === 'number' ? premium.amount : Number(payment.amount);
+  const amountNumber = payableBreakdown?.amount ?? storedAmountNumber;
   const normalizedAmountNumber =
     Number.isFinite(amountNumber) && amountNumber > 0 && amountNumber < MIN_PROMO_PAYABLE_AMOUNT
       ? MIN_PROMO_PAYABLE_AMOUNT
@@ -130,12 +138,13 @@ export async function GET(
     updatedAt: FieldValue.serverTimestamp()
   };
 
-  if (normalizedAmountNumber !== amountNumber) {
+  if (normalizedAmountNumber !== storedAmountNumber || payableBreakdown) {
     updatePayload['premium.amount'] = normalizedAmountNumber;
     updatePayload['payment.amount'] = amount;
 
-    if (typeof premium.subtotal === 'number') {
-      updatePayload['premium.discountAmount'] = Math.max(0, premium.subtotal - normalizedAmountNumber);
+    if (payableBreakdown) {
+      updatePayload['premium.totalBeforeRounding'] = payableBreakdown.totalBeforeRounding;
+      updatePayload['premium.roundingAdjustment'] = payableBreakdown.roundingAdjustment;
     }
   }
 

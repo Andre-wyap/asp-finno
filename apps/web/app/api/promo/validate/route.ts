@@ -6,6 +6,8 @@ import {
 } from '@asp/shared/promo';
 import {
   getAnnualPremium,
+  getPremiumBreakdown,
+  getRoundedPayableAmount,
   plans,
   type AgeBand,
   type OccupationCategory,
@@ -51,10 +53,8 @@ export async function POST(request: Request) {
     );
   }
 
-  // Calculate base amount the same way checkout does so the discount preview matches
-  const sst = Math.round(basePremium * 0.08);
-  const stampDuty = 10;
-  const totalBeforeDiscount = basePremium + sst + stampDuty;
+  // Calculate base amount the same way checkout does so the discount preview matches.
+  const { subtotal: totalBeforeDiscount } = getPremiumBreakdown(basePremium);
 
   const db = getDb();
   const doc = await db.collection('promoCodes').doc(code).get();
@@ -70,6 +70,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: result.reason }, { status: 422 });
   }
 
+  const payableBreakdown = getRoundedPayableAmount(
+    totalBeforeDiscount,
+    result.discountAmount
+  );
+
   return NextResponse.json({
     ok: true,
     code: result.code,
@@ -77,6 +82,8 @@ export async function POST(request: Request) {
     value: result.value,
     discountAmount: result.discountAmount,
     totalBeforeDiscount,
-    totalAfterDiscount: Math.max(0, totalBeforeDiscount - result.discountAmount)
+    totalBeforeRounding: payableBreakdown.totalBeforeRounding,
+    roundingAdjustment: payableBreakdown.roundingAdjustment,
+    totalAfterDiscount: payableBreakdown.amount
   });
 }

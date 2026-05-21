@@ -173,6 +173,60 @@ export const plans = [
 
 export type PlanCode = (typeof plans)[number]['code'];
 
+export const MANAGED_CARE_OPERATING_FEE = 1.1;
+export const SERVICE_TAX_RATE = 0.08;
+export const STAMP_DUTY_THRESHOLD = 150;
+export const STAMP_DUTY_AMOUNT = 10;
+export const CASH_ROUNDING_INCREMENT = 0.05;
+
+export function roundCurrency(value: number) {
+  return Math.round((value + Number.EPSILON) * 100) / 100;
+}
+
+export function roundDownToCashIncrement(
+  value: number,
+  increment = CASH_ROUNDING_INCREMENT
+) {
+  return roundCurrency(Math.floor((value + Number.EPSILON) / increment) * increment);
+}
+
+export function getRoundedPayableAmount(subtotal: number, discountAmount = 0) {
+  const totalBeforeRounding = Math.max(
+    0,
+    roundCurrency(subtotal - discountAmount)
+  );
+  const amount = roundDownToCashIncrement(totalBeforeRounding);
+  const roundingAdjustment = roundCurrency(totalBeforeRounding - amount);
+
+  return {
+    amount,
+    totalBeforeRounding,
+    roundingAdjustment
+  };
+}
+
+export function getPremiumBreakdown(annualPlanPrice: number) {
+  const baseAnnualPremium = roundCurrency(
+    annualPlanPrice - MANAGED_CARE_OPERATING_FEE
+  );
+  const managedCareOperatingFee = MANAGED_CARE_OPERATING_FEE;
+  const serviceTax = roundCurrency(baseAnnualPremium * SERVICE_TAX_RATE);
+  const stampDuty =
+    baseAnnualPremium >= STAMP_DUTY_THRESHOLD ? STAMP_DUTY_AMOUNT : 0;
+  const subtotal = roundCurrency(
+    baseAnnualPremium + managedCareOperatingFee + serviceTax + stampDuty
+  );
+
+  return {
+    annualPlanPrice,
+    baseAnnualPremium,
+    managedCareOperatingFee,
+    serviceTax,
+    stampDuty,
+    subtotal
+  };
+}
+
 export function getAnnualPremium(
   planCode: PlanCode,
   ageBand: AgeBand,

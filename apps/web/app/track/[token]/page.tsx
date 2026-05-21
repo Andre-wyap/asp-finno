@@ -49,11 +49,14 @@ type TrackerPlan = {
 
 type TrackerPremium = {
   amount: number;
+  annualPlanPrice: number | null;
   baseAnnualPremium: number | null;
+  managedCareOperatingFee: number | null;
   serviceTax: number | null;
   stampDuty: number | null;
   subtotal: number | null;
   discountAmount: number | null;
+  roundingAdjustment: number | null;
   currency: string;
 };
 
@@ -149,11 +152,16 @@ function formatDate(date: Date | null) {
   }).format(date);
 }
 
-function formatCurrency(value: number, currency = 'MYR') {
+function formatCurrency(
+  value: number,
+  currency = 'MYR',
+  options?: { cents?: boolean }
+) {
   return new Intl.NumberFormat('en-MY', {
     style: 'currency',
     currency,
-    maximumFractionDigits: 0
+    minimumFractionDigits: options?.cents ? 2 : 0,
+    maximumFractionDigits: options?.cents ? 2 : 0
   }).format(value);
 }
 
@@ -278,11 +286,14 @@ async function getTrackerApplication(token: string): Promise<TrackerApplication 
     },
     premium: {
       amount: asNumber(premiumRaw.amount) ?? 0,
+      annualPlanPrice: asNumber(premiumRaw.annualPlanPrice),
       baseAnnualPremium: asNumber(premiumRaw.baseAnnualPremium),
+      managedCareOperatingFee: asNumber(premiumRaw.managedCareOperatingFee),
       serviceTax: asNumber(premiumRaw.serviceTax),
       stampDuty: asNumber(premiumRaw.stampDuty),
       subtotal: asNumber(premiumRaw.subtotal),
       discountAmount: asNumber(premiumRaw.discountAmount),
+      roundingAdjustment: asNumber(premiumRaw.roundingAdjustment),
       currency: asString(premiumRaw.currency) || 'MYR'
     }
   };
@@ -466,7 +477,7 @@ export default async function TrackPage({
                 Premium paid
               </p>
               <p className="mt-1 font-display text-3xl font-semibold text-primary">
-                {formatCurrency(application.premium.amount, currency)}
+                {formatCurrency(application.premium.amount, currency, { cents: true })}
               </p>
             </div>
           </div>
@@ -487,29 +498,72 @@ export default async function TrackPage({
 
           {application.premium.subtotal !== null && (
             <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {application.premium.annualPlanPrice !== null && (
+                <Stat
+                  label="Annual plan price"
+                  value={formatCurrency(
+                    application.premium.annualPlanPrice,
+                    currency,
+                    { cents: true }
+                  )}
+                />
+              )}
               {application.premium.baseAnnualPremium !== null && (
                 <Stat
                   label="Base premium"
-                  value={formatCurrency(application.premium.baseAnnualPremium, currency)}
+                  value={formatCurrency(
+                    application.premium.baseAnnualPremium,
+                    currency,
+                    { cents: true }
+                  )}
+                />
+              )}
+              {application.premium.managedCareOperatingFee !== null && (
+                <Stat
+                  label="Managed care operating fee"
+                  value={formatCurrency(
+                    application.premium.managedCareOperatingFee,
+                    currency,
+                    { cents: true }
+                  )}
                 />
               )}
               {application.premium.serviceTax !== null && (
                 <Stat
                   label="Service tax (8%)"
-                  value={formatCurrency(application.premium.serviceTax, currency)}
+                  value={formatCurrency(application.premium.serviceTax, currency, {
+                    cents: true
+                  })}
                 />
               )}
               {application.premium.stampDuty !== null && (
                 <Stat
                   label="Stamp duty"
-                  value={formatCurrency(application.premium.stampDuty, currency)}
+                  value={formatCurrency(application.premium.stampDuty, currency, {
+                    cents: true
+                  })}
                 />
               )}
               {application.premium.discountAmount !== null &&
                 application.premium.discountAmount > 0 && (
                   <Stat
                     label="Discount"
-                    value={`− ${formatCurrency(application.premium.discountAmount, currency)}`}
+                    value={`− ${formatCurrency(
+                      application.premium.discountAmount,
+                      currency,
+                      { cents: true }
+                    )}`}
+                  />
+                )}
+              {application.premium.roundingAdjustment !== null &&
+                application.premium.roundingAdjustment > 0 && (
+                  <Stat
+                    label="Rounding adjustment"
+                    value={`− ${formatCurrency(
+                      application.premium.roundingAdjustment,
+                      currency,
+                      { cents: true }
+                    )}`}
                   />
                 )}
             </div>

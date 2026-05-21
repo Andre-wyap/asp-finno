@@ -186,7 +186,7 @@ export function verifyDokuSignature({
 }
 
 function dokuAmount(amount: number, amountMultiplier: number) {
-  return Math.round(amount * amountMultiplier);
+  return Math.round((amount * amountMultiplier + Number.EPSILON) * 100) / 100;
 }
 
 function cleanPhone(phone: string) {

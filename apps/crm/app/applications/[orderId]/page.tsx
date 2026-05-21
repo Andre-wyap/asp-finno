@@ -185,10 +185,22 @@ export default async function ApplicationDetailPage({ params }: { params: PagePa
               <Row label="Plan code" value={plan.code as string} />
               <Row label="Age band" value={plan.ageBand as string} />
               <Row label="Occupation category" value={plan.occupationCategory as string} />
+              {typeof premium.annualPlanPrice === 'number' && (
+                <Row
+                  label="Annual plan price"
+                  value={formatCurrency(premium.annualPlanPrice)}
+                />
+              )}
               <Row
                 label="Base premium"
                 value={formatCurrency(premium.baseAnnualPremium)}
               />
+              {typeof premium.managedCareOperatingFee === 'number' && (
+                <Row
+                  label="Managed care operating fee"
+                  value={formatCurrency(premium.managedCareOperatingFee)}
+                />
+              )}
               <Row label="SST (8%)" value={formatCurrency(premium.serviceTax)} />
               <Row label="Stamp duty" value={formatCurrency(premium.stampDuty)} />
               {typeof premium.subtotal === 'number' && (
@@ -200,6 +212,13 @@ export default async function ApplicationDetailPage({ params }: { params: PagePa
                   value={`− ${formatCurrency(premium.discountAmount)}`}
                 />
               )}
+              {typeof premium.roundingAdjustment === 'number' &&
+                premium.roundingAdjustment > 0 && (
+                  <Row
+                    label="Rounding adjustment"
+                    value={`− ${formatCurrency(premium.roundingAdjustment)}`}
+                  />
+                )}
               <Row label="Total payable" value={formatCurrency(premium.amount)} />
               {typeof app.policyNumber === 'string' && app.policyNumber && (
                 <Row label="Policy number" value={app.policyNumber} />

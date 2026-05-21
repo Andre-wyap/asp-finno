@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { useState } from 'react';
 import {
   ageBandLabels,
+  getPremiumBreakdown,
+  getRoundedPayableAmount,
   occupationCategoryLabels,
   type AgeBand,
   type OccupationCategory,
@@ -179,11 +181,12 @@ function validateNominees(nominees: NomineeForm[]): FormErrors {
 // Helpers
 // ---------------------------------------------------------------------------
 
-const fmt = (v: number) =>
+const fmt = (v: number, options?: { cents?: boolean }) =>
   new Intl.NumberFormat('en-MY', {
     style: 'currency',
     currency: 'MYR',
-    maximumFractionDigits: 0,
+    minimumFractionDigits: options?.cents ? 2 : 0,
+    maximumFractionDigits: options?.cents ? 2 : 0,
   }).format(v);
 
 function fmtDate(iso: string) {
@@ -304,10 +307,13 @@ function OrderSummary({
   onApplyPromo: (promo: AppliedPromo) => void;
   onRemovePromo: () => void;
 }) {
-  const sst = Math.round(premium * 0.08);
-  const stampDuty = 10;
-  const subtotal = premium + sst + stampDuty;
-  const total = Math.max(0, subtotal - (appliedPromo?.discountAmount ?? 0));
+  const premiumBreakdown = getPremiumBreakdown(premium);
+  const subtotal = premiumBreakdown.subtotal;
+  const payableBreakdown = getRoundedPayableAmount(
+    subtotal,
+    appliedPromo?.discountAmount ?? 0
+  );
+  const total = payableBreakdown.amount;
 
   const [code, setCode] = useState('');
   const [validating, setValidating] = useState(false);
@@ -370,13 +376,33 @@ function OrderSummary({
       <div className="my-5 h-px bg-surface-container-highest" />
 
       <div className="grid gap-2 text-sm">
-        <SummaryRow label="Annual Premium" value={fmt(premium)} />
-        <SummaryRow label="8% Service Tax" value={fmt(sst)} />
-        <SummaryRow label="Stamp Duty" value={`RM ${stampDuty}`} />
+        <SummaryRow label="Annual Plan Price" value={fmt(premium, { cents: true })} />
+        <SummaryRow
+          label="Base Premium"
+          value={fmt(premiumBreakdown.baseAnnualPremium, { cents: true })}
+        />
+        <SummaryRow
+          label="Managed Care Operating Fee"
+          value={fmt(premiumBreakdown.managedCareOperatingFee, { cents: true })}
+        />
+        <SummaryRow
+          label="8% Service Tax"
+          value={fmt(premiumBreakdown.serviceTax, { cents: true })}
+        />
+        <SummaryRow
+          label="Stamp Duty"
+          value={fmt(premiumBreakdown.stampDuty, { cents: true })}
+        />
         {appliedPromo && (
           <SummaryRow
             label={`Promo (${appliedPromo.code})`}
-            value={`− ${fmt(appliedPromo.discountAmount)}`}
+            value={`− ${fmt(appliedPromo.discountAmount, { cents: true })}`}
+          />
+        )}
+        {payableBreakdown.roundingAdjustment > 0 && (
+          <SummaryRow
+            label="Rounding Adjustment"
+            value={`− ${fmt(payableBreakdown.roundingAdjustment, { cents: true })}`}
           />
         )}
       </div>
@@ -429,7 +455,9 @@ function OrderSummary({
 
       <div className="mt-4 rounded-lg bg-primary/5 px-4 py-3">
         <p className="text-xs text-on-surface-variant">Total payable</p>
-        <p className="mt-1 font-display text-3xl font-semibold text-primary">{fmt(total)}</p>
+        <p className="mt-1 font-display text-3xl font-semibold text-primary">
+          {fmt(total, { cents: true })}
+        </p>
         <p className="mt-0.5 text-xs text-on-surface-variant">≈ {fmt(Math.ceil(total / 12))} / month</p>
       </div>
 

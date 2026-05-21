@@ -212,8 +212,9 @@ export default function WebHome() {
                 Distributed by WF Wealth Management Sdn Bhd
               </p>
               <p className="mt-5 max-w-sm text-xs leading-6 text-on-primary-container/60">
-                All premiums are subject to 8% Service Tax + RM10 Stamp Duty. Valid from 1 March
-                2025.
+                Checkout includes 8% Service Tax on the base premium, RM1.10 Managed Care
+                Operating Fee, RM10 Stamp Duty where applicable, and final cash rounding down
+                to the nearest 5 sen. Valid from 1 March 2025.
               </p>
             </div>
 
