@@ -11,6 +11,7 @@ import {
 import { triggerStatusEmail } from '@asp/shared/onStatusChange';
 import type { ApplicationStatus } from '@asp/shared/status';
 import { planNameFromCode } from '@asp/pricing';
+import { sendMetaCapiEvent, type MetaBrowserSignals } from '../../../../lib/metaCapi';
 
 function jsonError(message: string, status = 400) {
   return NextResponse.json({ error: message }, { status });
@@ -26,6 +27,23 @@ function senangPayOk() {
 function eventIdFor(params: SenangPayReturnParams) {
   const raw = `${params.transactionId || 'no-txn'}_${params.statusId}_${params.orderId}`;
   return `payment_callback_${raw.replace(/[^A-Za-z0-9_-]/g, '_')}`;
+}
+
+function publicBaseUrl() {
+  return process.env.TRACKER_BASE_URL ?? 'https://asp.finnomalaysia.com';
+}
+
+function paymentResultUrl(orderId: string) {
+  const url = new URL('/payment/result', publicBaseUrl());
+  url.searchParams.set('provider', 'senangpay');
+  url.searchParams.set('order_id', orderId);
+  return url.toString();
+}
+
+function storedMetaSignals(applicationData: FirebaseFirestore.DocumentData) {
+  const meta = applicationData.tracking?.meta;
+
+  return meta && typeof meta === 'object' ? (meta as MetaBrowserSignals) : null;
 }
 
 async function paramsFromRequest(request: Request) {
@@ -157,6 +175,25 @@ async function handleCallback(request: Request) {
       .doc(promoCode)
       .update({ usageCount: FieldValue.increment(1) })
       .catch((err: unknown) => console.error('promo_usage_increment_failed', { promoCode, err }));
+  }
+
+  if (statusChanged && nextStatus === 'paid' && applicationData) {
+    await sendMetaCapiEvent({
+      eventName: 'Purchase',
+      eventId: `purchase_${params.orderId}`,
+      eventSourceUrl: paymentResultUrl(params.orderId),
+      email: applicationData.applicant?.email,
+      phone: applicationData.applicant?.mobile,
+      browserSignals: storedMetaSignals(applicationData),
+      customData: {
+        value: applicationData.premium?.amount ?? 0,
+        currency: applicationData.premium?.currency ?? 'MYR',
+        content_ids: [applicationData.plan?.code ?? 'allianz_shield_plus'],
+        content_name: 'Allianz Shield Plus',
+        content_type: 'product',
+        order_id: params.orderId
+      }
+    });
   }
 
   // Trigger email after transaction commits (non-blocking, errors are logged/stored)

@@ -32,3 +32,11 @@ env:
     secret: TRACKER_BASE_URL
   - variable: FIREBASE_PROJECT_ID
     value: asp-finno
+  - variable: NEXT_PUBLIC_META_PIXEL_ID
+    value: "530184174104165"
+  - variable: META_PIXEL_ID
+    value: "530184174104165"
+  - variable: META_CAPI_ACCESS_TOKEN
+    secret: META_CAPI_ACCESS_TOKEN
+  - variable: META_CAPI_TEST_EVENT_CODE
+    secret: META_CAPI_TEST_EVENT_CODE

@@ -1,4 +1,6 @@
+import { Suspense } from 'react';
 import Script from 'next/script';
+import { MetaPixelPageView } from './MetaPixelPageView';
 
 const gaMeasurementId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
 const metaPixelId = process.env.NEXT_PUBLIC_META_PIXEL_ID;
@@ -49,6 +51,9 @@ export function Analytics() {
               alt=""
             />
           </noscript>
+          <Suspense fallback={null}>
+            <MetaPixelPageView />
+          </Suspense>
         </>
       )}
     </>

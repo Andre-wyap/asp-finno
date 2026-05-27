@@ -11,6 +11,7 @@ import {
   verifyDokuSignature,
   type DokuNotification
 } from '../../../../lib/doku';
+import { sendMetaCapiEvent, type MetaBrowserSignals } from '../../../../lib/metaCapi';
 
 function jsonError(message: string, status = 400) {
   return NextResponse.json({ error: message }, { status });
@@ -44,6 +45,23 @@ function transactionDate(notification: DokuNotification) {
 
   const date = new Date(value);
   return Number.isNaN(date.valueOf()) ? null : date;
+}
+
+function publicBaseUrl() {
+  return process.env.TRACKER_BASE_URL ?? 'https://asp.finnomalaysia.com';
+}
+
+function paymentResultUrl(orderId: string) {
+  const url = new URL('/payment/result', publicBaseUrl());
+  url.searchParams.set('provider', 'doku');
+  url.searchParams.set('orderId', orderId);
+  return url.toString();
+}
+
+function storedMetaSignals(applicationData: FirebaseFirestore.DocumentData) {
+  const meta = applicationData.tracking?.meta;
+
+  return meta && typeof meta === 'object' ? (meta as MetaBrowserSignals) : null;
 }
 
 async function handleNotification(request: Request) {
@@ -176,6 +194,25 @@ async function handleNotification(request: Request) {
       .doc(promoCode)
       .update({ usageCount: FieldValue.increment(1) })
       .catch((err: unknown) => console.error('promo_usage_increment_failed', { promoCode, err }));
+  }
+
+  if (statusChanged && nextStatus === 'paid' && applicationData) {
+    await sendMetaCapiEvent({
+      eventName: 'Purchase',
+      eventId: `purchase_${notification.orderId}`,
+      eventSourceUrl: paymentResultUrl(notification.orderId),
+      email: applicationData.applicant?.email,
+      phone: applicationData.applicant?.mobile,
+      browserSignals: storedMetaSignals(applicationData),
+      customData: {
+        value: applicationData.premium?.amount ?? 0,
+        currency: applicationData.premium?.currency ?? 'MYR',
+        content_ids: [applicationData.plan?.code ?? 'allianz_shield_plus'],
+        content_name: 'Allianz Shield Plus',
+        content_type: 'product',
+        order_id: notification.orderId
+      }
+    });
   }
 
   if (statusChanged && nextStatus && applicationData) {

@@ -31,6 +31,7 @@ import {
 } from '../../../../lib/senangPay';
 import { createDokuCheckoutPayment } from '../../../../lib/doku';
 import { getRuntimePaymentProvider } from '../../../../lib/paymentProvider';
+import { getMetaBrowserSignals, sendMetaCapiEvent } from '../../../../lib/metaCapi';
 
 type CheckoutPayload = {
   applicant?: {
@@ -286,6 +287,9 @@ export async function POST(request: Request) {
     const db = getDb();
     const paymentProvider = await getRuntimePaymentProvider(db);
     const orderId = generateOrderId();
+    const baseUrl = publicBaseUrl();
+    const metaBrowserSignals = getMetaBrowserSignals(request, baseUrl);
+    const metaInitiateCheckoutEventId = `initiate_checkout_${orderId}`;
     const premiumBreakdown = getPremiumBreakdown(validated.premium);
     const { serviceTax, stampDuty, subtotal } = premiumBreakdown;
 
@@ -341,7 +345,7 @@ export async function POST(request: Request) {
               phone: validated.mobile,
               address: validated.applicant.address?.trim()
             },
-            baseUrl: publicBaseUrl()
+            baseUrl
           })
         : null;
     const senangPayHash = senangPayConfig
@@ -428,6 +432,12 @@ export async function POST(request: Request) {
         hashVerifiedAt: null,
         signatureVerifiedAt: null
       },
+      tracking: {
+        meta: {
+          ...metaBrowserSignals,
+          initiateCheckoutEventId: metaInitiateCheckoutEventId
+        }
+      },
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
       paidAt: null,
@@ -473,6 +483,23 @@ export async function POST(request: Request) {
         error: appliedEmailResult.error,
       });
     }
+
+    await sendMetaCapiEvent({
+      eventName: 'InitiateCheckout',
+      eventId: metaInitiateCheckoutEventId,
+      eventSourceUrl: metaBrowserSignals.eventSourceUrl ?? baseUrl,
+      email: validated.applicant.email?.trim().toLowerCase(),
+      phone: validated.mobile,
+      browserSignals: metaBrowserSignals,
+      customData: {
+        value: totalPayable,
+        currency: 'MYR',
+        content_ids: [validated.plan.code],
+        content_name: 'Allianz Shield Plus',
+        content_type: 'product',
+        order_id: orderId
+      }
+    });
 
     const redirectUrl = dokuCheckout
       ? dokuCheckout.redirectUrl
