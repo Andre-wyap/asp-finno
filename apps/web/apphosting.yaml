@@ -33,9 +33,9 @@ env:
   - variable: FIREBASE_PROJECT_ID
     value: asp-finno
   - variable: NEXT_PUBLIC_META_PIXEL_ID
-    value: "530184174104165"
+    secret: NEXT_PUBLIC_META_PIXEL_ID
   - variable: META_PIXEL_ID
-    value: "530184174104165"
+    secret: META_PIXEL_ID
   - variable: META_CAPI_ACCESS_TOKEN
     secret: META_CAPI_ACCESS_TOKEN
   - variable: META_CAPI_TEST_EVENT_CODE
