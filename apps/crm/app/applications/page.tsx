@@ -117,7 +117,8 @@ export default async function ApplicationsPage({ searchParams }: { searchParams:
         statusLabel: isArchived ? 'Archived' : (STATUS_LABELS[s] ?? s),
         statusColor: STATUS_COLORS[s] ?? 'bg-surface-container text-on-surface-variant',
         createdAt: formatDate(app.createdAt),
-        archivable: !isArchived && ARCHIVABLE_STATUSES.has(s)
+        archivable: !isArchived && ARCHIVABLE_STATUSES.has(s),
+        archived: isArchived
       };
     });
 
@@ -140,6 +141,7 @@ export default async function ApplicationsPage({ searchParams }: { searchParams:
 
         <ApplicationsTable
           rows={rows}
+          mode={archive === 'archived' ? 'unarchive' : 'archive'}
           prevHref={prevCursor ? buildUrl(sp, { cursor: '' }) : null}
           nextHref={nc ? buildUrl(sp, { cursor: nc }) : null}
         />

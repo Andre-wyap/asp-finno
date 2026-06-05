@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
-import { Archive, X } from 'lucide-react';
+import { Archive, ArchiveRestore, X } from 'lucide-react';
 
 export type ApplicationRow = {
   id: string;
@@ -13,23 +13,28 @@ export type ApplicationRow = {
   statusColor: string;
   createdAt: string;
   archivable: boolean;
+  archived: boolean;
 };
 
 const SKIP_LABELS: Record<string, string> = {
   not_found: 'not found',
   already_archived: 'already archived',
-  not_archivable: 'not an archivable status'
+  not_archivable: 'not an archivable status',
+  not_archived: 'not archived'
 };
 
 export function ApplicationsTable({
   rows,
   prevHref,
-  nextHref
+  nextHref,
+  mode
 }: {
   rows: ApplicationRow[];
   prevHref: string | null;
   nextHref: string | null;
+  mode: 'archive' | 'unarchive';
 }) {
+  const isUnarchive = mode === 'unarchive';
   const router = useRouter();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [reason, setReason] = useState('');
@@ -37,11 +42,11 @@ export function ApplicationsTable({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  const archivableIds = useMemo(
-    () => rows.filter((r) => r.archivable).map((r) => r.id),
-    [rows]
+  const selectableIds = useMemo(
+    () => rows.filter((r) => (isUnarchive ? r.archived : r.archivable)).map((r) => r.id),
+    [rows, isUnarchive]
   );
-  const allSelected = archivableIds.length > 0 && archivableIds.every((id) => selected.has(id));
+  const allSelected = selectableIds.length > 0 && selectableIds.every((id) => selected.has(id));
 
   function toggle(id: string) {
     setSelected((prev) => {
@@ -55,7 +60,7 @@ export function ApplicationsTable({
   }
 
   function toggleAll() {
-    setSelected(allSelected ? new Set() : new Set(archivableIds));
+    setSelected(allSelected ? new Set() : new Set(selectableIds));
     setSuccess(null);
     setError(null);
   }
@@ -66,9 +71,9 @@ export function ApplicationsTable({
     setError(null);
   }
 
-  async function archiveSelected() {
+  async function applySelected() {
     if (selected.size === 0) return;
-    if (!reason.trim()) {
+    if (!isUnarchive && !reason.trim()) {
       setError('Archive reason is required.');
       return;
     }
@@ -78,24 +83,30 @@ export function ApplicationsTable({
     setSuccess(null);
 
     try {
-      const response = await fetch('/api/crm/applications/bulk-archive', {
+      const endpoint = isUnarchive
+        ? '/api/crm/applications/bulk-unarchive'
+        : '/api/crm/applications/bulk-archive';
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orderIds: Array.from(selected), reason: reason.trim() })
+        body: JSON.stringify({ orderIds: Array.from(selected), reason: reason.trim() || undefined })
       });
       const data = (await response.json().catch(() => ({}))) as {
         error?: string;
         archivedCount?: number;
+        restoredCount?: number;
         skippedCount?: number;
         skipped?: Array<{ orderId: string; reason: string }>;
       };
 
       if (!response.ok) {
-        setError(data.error ?? 'Bulk archive failed.');
+        setError(data.error ?? (isUnarchive ? 'Bulk restore failed.' : 'Bulk archive failed.'));
         return;
       }
 
-      const parts = [`Archived ${data.archivedCount ?? 0} application(s).`];
+      const count = isUnarchive ? (data.restoredCount ?? 0) : (data.archivedCount ?? 0);
+      const verb = isUnarchive ? 'Restored' : 'Archived';
+      const parts = [`${verb} ${count} application(s).`];
       if (data.skippedCount) {
         const detail = (data.skipped ?? [])
           .map((s) => `${s.orderId} (${SKIP_LABELS[s.reason] ?? s.reason})`)
@@ -142,10 +153,10 @@ export function ApplicationsTable({
               <th className="px-4 py-3">
                 <input
                   type="checkbox"
-                  aria-label="Select all archivable applications"
+                  aria-label={isUnarchive ? 'Select all archived applications' : 'Select all archivable applications'}
                   checked={allSelected}
                   onChange={toggleAll}
-                  disabled={archivableIds.length === 0}
+                  disabled={selectableIds.length === 0}
                   className="size-4 cursor-pointer accent-primary disabled:cursor-not-allowed disabled:opacity-40"
                 />
               </th>
@@ -166,7 +177,7 @@ export function ApplicationsTable({
                 }`}
               >
                 <td className="px-4 py-3">
-                  {row.archivable ? (
+                  {(isUnarchive ? row.archived : row.archivable) ? (
                     <input
                       type="checkbox"
                       aria-label={`Select ${row.id}`}
@@ -245,17 +256,23 @@ export function ApplicationsTable({
                 setReason(e.target.value);
                 setError(null);
               }}
-              placeholder="Reason for archiving these leads"
+              placeholder={
+                isUnarchive ? 'Reason for restoring (optional)' : 'Reason for archiving these leads'
+              }
               className="flex-1 rounded-lg bg-surface-container-low px-3 py-2 text-sm text-primary placeholder:text-on-surface-variant focus:outline-none focus:ring-2 focus:ring-primary/30"
             />
             <button
               type="button"
-              onClick={archiveSelected}
-              disabled={loading || !reason.trim()}
+              onClick={applySelected}
+              disabled={loading || (!isUnarchive && !reason.trim())}
               className="flex items-center justify-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-on-primary transition hover:bg-secondary disabled:opacity-50"
             >
-              <Archive size={16} />
-              {loading ? 'Archiving...' : `Archive ${selected.size}`}
+              {isUnarchive ? <ArchiveRestore size={16} /> : <Archive size={16} />}
+              {loading
+                ? isUnarchive
+                  ? 'Restoring...'
+                  : 'Archiving...'
+                : `${isUnarchive ? 'Restore' : 'Archive'} ${selected.size}`}
             </button>
           </div>
         </div>
