@@ -1,11 +1,13 @@
 import { redirect } from 'next/navigation';
-import Link from 'next/link';
 import { CrmShell } from '../../components/CrmShell';
 import { ApplicationsFilters } from '../../components/ApplicationsFilters';
+import { ApplicationsTable, type ApplicationRow } from '../../components/ApplicationsTable';
 import { verifyAdmin } from '../../lib/auth';
 import { getDb } from '../../lib/firebaseAdmin';
 
 const PAGE_SIZE = 20;
+
+const ARCHIVABLE_STATUSES = new Set(['applied', 'lead', 'payment_failed', 'drop']);
 
 const STATUS_LABELS: Record<string, string> = {
   applied: 'Applied',
@@ -103,6 +105,22 @@ export default async function ApplicationsPage({ searchParams }: { searchParams:
   }) {
     const prevCursor = sp.cursor ?? null;
 
+    const rows: ApplicationRow[] = apps.map((app) => {
+      const s = (app.status as string) ?? '';
+      const isArchived = Boolean(app.archivedAt);
+      const applicant = (app.applicant as Record<string, unknown>) ?? {};
+      const plan = (app.plan as Record<string, unknown>) ?? {};
+      return {
+        id: app.id as string,
+        name: (applicant.name as string) ?? '—',
+        planCode: (plan.code as string) ?? '—',
+        statusLabel: isArchived ? 'Archived' : (STATUS_LABELS[s] ?? s),
+        statusColor: STATUS_COLORS[s] ?? 'bg-surface-container text-on-surface-variant',
+        createdAt: formatDate(app.createdAt),
+        archivable: !isArchived && ARCHIVABLE_STATUSES.has(s)
+      };
+    });
+
     return (
       <div className="mx-auto max-w-6xl">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -120,88 +138,11 @@ export default async function ApplicationsPage({ searchParams }: { searchParams:
           />
         </div>
 
-        <div className="mt-6 overflow-hidden rounded-lg bg-surface-container-lowest shadow-ambient">
-          {apps.length === 0 ? (
-            <div className="px-6 py-16 text-center text-sm text-on-surface-variant">
-              No applications found.
-            </div>
-          ) : (
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-outline-variant/20 bg-surface-container-low text-left text-xs font-semibold uppercase tracking-widest text-on-surface-variant">
-                  <th className="px-4 py-3">Order ID</th>
-                  <th className="px-4 py-3">Name</th>
-                  <th className="px-4 py-3">Plan</th>
-                  <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3">Created</th>
-                  <th className="px-4 py-3" />
-                </tr>
-              </thead>
-              <tbody>
-                {apps.map((app) => {
-                  const s = (app.status as string) ?? '';
-                  const isArchived = Boolean(app.archivedAt);
-                  const applicant = (app.applicant as Record<string, unknown>) ?? {};
-                  const plan = (app.plan as Record<string, unknown>) ?? {};
-                  return (
-                    <tr
-                      key={app.id as string}
-                      className="border-b border-outline-variant/10 last:border-0 hover:bg-surface-container-low/50"
-                    >
-                      <td className="px-4 py-3 font-mono text-xs text-on-surface-variant">
-                        {app.id as string}
-                      </td>
-                      <td className="px-4 py-3 font-semibold text-primary">
-                        {(applicant.name as string) ?? '—'}
-                      </td>
-                      <td className="px-4 py-3 text-on-surface-variant">
-                        {(plan.code as string) ?? '—'}
-                      </td>
-                      <td className="px-4 py-3">
-                        <span
-                          className={`rounded-full px-2.5 py-1 text-xs font-semibold ${STATUS_COLORS[s] ?? 'bg-surface-container text-on-surface-variant'}`}
-                        >
-                          {isArchived ? 'Archived' : (STATUS_LABELS[s] ?? s)}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-on-surface-variant">
-                        {formatDate(app.createdAt)}
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <Link
-                          href={`/applications/${app.id as string}`}
-                          className="rounded-full bg-primary-fixed/40 px-3 py-1.5 text-xs font-semibold text-primary hover:bg-primary-fixed"
-                        >
-                          View
-                        </Link>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          )}
-        </div>
-
-        {/* Pagination */}
-        <div className="mt-4 flex gap-3">
-          {prevCursor && (
-            <Link
-              href={buildUrl(sp, { cursor: '' })}
-              className="rounded-full bg-surface-container-lowest px-4 py-2 text-sm font-semibold text-primary shadow-ambient hover:bg-primary-fixed/40"
-            >
-              ← Back to first page
-            </Link>
-          )}
-          {nc && (
-            <Link
-              href={buildUrl(sp, { cursor: nc })}
-              className="ml-auto rounded-full bg-primary px-4 py-2 text-sm font-semibold text-on-primary hover:bg-secondary"
-            >
-              Next page →
-            </Link>
-          )}
-        </div>
+        <ApplicationsTable
+          rows={rows}
+          prevHref={prevCursor ? buildUrl(sp, { cursor: '' }) : null}
+          nextHref={nc ? buildUrl(sp, { cursor: nc }) : null}
+        />
       </div>
     );
   }

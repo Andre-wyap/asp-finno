@@ -155,7 +155,7 @@ export default async function ApplicationDetailPage({ params }: { params: PagePa
               <Row label="Annual income" value={formatAnnualIncome(applicant.annualIncome)} />
               <Row label="Smoker" value={(applicant.smoker as boolean) ? 'Yes' : 'No'} />
               <Row label="Person with Disability (OKU)" value={(applicant.disability as boolean) ? 'Yes' : 'No'} />
-              {(applicant.disability as boolean) && applicant.disabilityDetails && (
+              {Boolean(applicant.disability) && Boolean(applicant.disabilityDetails) && (
                 <div className="col-span-2">
                   <Row label="Disability Details" value={applicant.disabilityDetails as string} />
                 </div>
