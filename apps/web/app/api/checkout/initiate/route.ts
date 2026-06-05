@@ -45,6 +45,8 @@ type CheckoutPayload = {
     occupation?: string;
     annualIncome?: string | number;
     smoker?: boolean;
+    disability?: boolean;
+    disabilityDetails?: string;
   };
   nominees?: Array<{
     name?: string;
@@ -130,6 +132,10 @@ function getUnderwritingAssessment(applicant: NonNullable<CheckoutPayload['appli
 
   if (applicant.smoker) {
     reasons.push('smoker');
+  }
+
+  if (applicant.disability) {
+    reasons.push('disability');
   }
 
   return {
@@ -370,7 +376,11 @@ export async function POST(request: Request) {
         gender: validated.parsedNric.gender,
         occupation: validated.applicant.occupation?.trim(),
         annualIncome: validated.annualIncome,
-        smoker: Boolean(validated.applicant.smoker)
+        smoker: Boolean(validated.applicant.smoker),
+        disability: Boolean(validated.applicant.disability),
+        disabilityDetails: validated.applicant.disability
+          ? (validated.applicant.disabilityDetails?.trim() ?? '')
+          : ''
       },
       nominees: validated.nominees.map((nominee) => ({
         name: nominee.name?.trim(),

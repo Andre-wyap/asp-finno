@@ -88,6 +88,8 @@ interface ApplicantForm {
   occupation: string;
   annualIncome: string;
   smoker: boolean;
+  disability: boolean;
+  disabilityDetails: string;
 }
 
 interface NomineeForm {
@@ -110,6 +112,8 @@ const INITIAL_APPLICANT: ApplicantForm = {
   occupation: '',
   annualIncome: '',
   smoker: false,
+  disability: false,
+  disabilityDetails: '',
 };
 
 const EMPTY_NOMINEE: NomineeForm = {
@@ -166,6 +170,9 @@ function validateApplicant(a: ApplicantForm): FormErrors {
   const annualIncome = Number(a.annualIncome.replace(/,/g, ''));
   if (!a.annualIncome.trim() || !Number.isFinite(annualIncome) || annualIncome <= 0)
     errors.annualIncome = 'Please enter your annual income';
+
+  if (a.disability && !a.disabilityDetails.trim())
+    errors.disabilityDetails = 'Please describe the nature of the disability';
 
   return errors;
 }
@@ -852,6 +859,54 @@ export function ApplicationForm({ plan, ageBand, occupationCategory, premium }: 
                         ))}
                       </div>
                     </div>
+
+                    {/* Disability declaration */}
+                    <div>
+                      <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-on-surface-variant">
+                        Are you a person with disability (OKU)?
+                      </p>
+                      <div className="flex gap-3">
+                        {[
+                          { label: 'No', value: false },
+                          { label: 'Yes', value: true },
+                        ].map(({ label, value }) => (
+                          <button
+                            key={label}
+                            type="button"
+                            onClick={() => {
+                              setField('disability', value);
+                              if (!value) setField('disabilityDetails', '');
+                            }}
+                            className={`flex min-h-11 flex-1 items-center justify-center rounded-full text-sm font-semibold transition ${
+                              applicant.disability === value
+                                ? 'bg-primary text-on-primary'
+                                : 'bg-surface-container text-on-surface-variant hover:bg-primary-fixed/40'
+                            }`}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+
+                      {applicant.disability && (
+                        <div className="mt-4">
+                          <FormField
+                            label="Please describe the nature of the disability"
+                            error={errors.disabilityDetails}
+                          >
+                            <textarea
+                              value={applicant.disabilityDetails}
+                              onChange={(e) =>
+                                setField('disabilityDetails', e.target.value)
+                              }
+                              rows={3}
+                              placeholder="Tell us about the disability"
+                              className={`${inputCls} resize-none`}
+                            />
+                          </FormField>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               )}
@@ -997,6 +1052,18 @@ export function ApplicationForm({ plan, ageBand, occupationCategory, premium }: 
                           label="Smoker"
                           value={applicant.smoker ? 'Yes' : 'No'}
                         />
+                        <ReviewRow
+                          label="Person with Disability (OKU)"
+                          value={applicant.disability ? 'Yes' : 'No'}
+                        />
+                        {applicant.disability && (
+                          <div className="sm:col-span-2">
+                            <ReviewRow
+                              label="Disability Details"
+                              value={applicant.disabilityDetails}
+                            />
+                          </div>
+                        )}
                         <div className="sm:col-span-2">
                           <ReviewRow label="Address" value={applicant.address} />
                         </div>
